@@ -62,7 +62,7 @@ def guess_summary(title):
         return ''
     prefix_removed = re.sub(r'^(快讯|消息|独家|重磅|突发|最新|实录|公告|解读|评论|周报|早报|晚报|早知道|盘前|盘中|盘后|收评|午评|早盘)：?\s*', '', t)
     nums = re.findall(r'[\d,.]+%?|千亿|万亿|亿|万', prefix_removed[:30])
-    entities = re.findall(r'^[\u4e00-\u9fff]{2,4}', prefix_removed)
+    entities = re.findall('^[\u4e00-\u9fff]{2,4}', prefix_removed)
     verbs = re.findall(r'(宣布|发布|启动|推出|达成|签署|裁定|通过|批准|否决|调查|起诉|警告|制裁|呼吁|称|表示|指出|强调|要求|禁止|限制)', prefix_removed)
     parts = []
     if entities and len(entities[0]) >= 2:
@@ -150,7 +150,7 @@ except:
 
 # ── 热词 ──
 wf = {}
-for m in re.finditer(r'[\u4e00-\u9fff]{2,5}', ' '.join(n['t'] for n in all_news)):
+for m in re.finditer('[\u4e00-\u9fff]{2,5}', ' '.join(n['t'] for n in all_news)):
     w = m.group()
     if w not in ('报道','新闻','今日','中国','美国','市场','公司','发布','最新','可能','一个','进行','表示','以及','提到'):
         wf[w] = wf.get(w,0)+1
@@ -190,7 +190,7 @@ for cat in cat_order:
     for i,item in enumerate(items):
         imp = get_importance(item['t'])
         tag = f'<span class="imp {imp.split()[0]}" style="display:{"inline" if imp else "none"}">{imp.split()[0]}</span>' if imp else ''
-                sm = guess_summary(escape(item['t']))
+        sm = guess_summary(escape(item['t']))
         sm_html = f'<div class="nsm">{sm}</div>' if sm else ''
         ent = extract_entities(item['t'])
         ent_html = ''.join(f'<span class="et">{escape(e)}</span>' for e in ent) if ent else ''
