@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -18,11 +18,12 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,35 +31,31 @@ jobs:
           node-version: '20'
 
       - name: Python news collector (main sources)
-        run: timeout 150 python3 .github/scripts/fetch_news.py || echo 'MAIN_COLLECTOR_FAILED'
+        run: timeout 120 python3 .github/scripts/fetch_news.py || echo 'MAIN_COLLECTOR_FAILED'
 
       - name: RSS collector (international sources)
         run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'RSS_COLLECTOR_FAILED'
 
       - name: Vertical collector (Zhihu/Douban/GitHub/sspai)
-        run: timeout 120 python3 .github/scripts/fetch_more.py || echo 'MORE_COLLECTOR_FAILED'
+        run: timeout 90 python3 .github/scripts/fetch_more.py || echo 'MORE_COLLECTOR_FAILED'
 
       - name: Merge all collectors
         run: python3 .github/scripts/merge_news.py
 
       - name: Python page builder
         working-directory: ./
-        run: python3 .github/scripts/generate_site.py
-
-      - name: Deploy to gh-pages branch
         run: |
-          git config user.name "daily-news-bot"
-          git config user.email "bot@example.com"
-          git add index.html -f
-          git stash --include-untracked -- .github/ || true
-          git stash drop || true
-          if git show-ref --quiet refs/heads/gh-pages; then
-            git checkout gh-pages
-            git checkout main -- index.html
-          else
-            git checkout --orphan gh-pages
-            git rm -rf .
-            git checkout main -- index.html
-          fi
-          git commit -m "auto deploy $(date -u +'%Y-%m-%d %H:%M UTC')" || true
-          git push origin gh-pages --force
+          mkdir -p _site
+          python3 .github/scripts/generate_site.py
+
+      - name: Create .nojekyll
+        run: touch _site/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

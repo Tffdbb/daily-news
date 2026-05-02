@@ -422,7 +422,7 @@ html = html.replace('__NEWS__', news_html)
 html = html.replace('__SRCBARS__', src_bars_html).replace('__SRCLIST__', src_list_html)
 html = html.replace('__SRC_COUNT__', str(active_count))
 
-with open('index.html', 'w', encoding='utf-8') as f:
+with open('_site/index.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
 print(f'=== 完成: {total}条 · {active_count}个来源 ===')
