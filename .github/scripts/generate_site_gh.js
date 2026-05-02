@@ -1,353 +1,482 @@
-// 多数据源 - 同花顺 + 华尔街见闻 + 财联社 + 第一财经 + 百度 + 东方财富 + 光明网 + 南方周末 + 新浪
 const fs = require('fs');
 const https = require('https');
 
-function fetch(url, ref) {
-  return new Promise((resolve) => {
-    const opts = { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }, timeout: 10000 };
-    if (ref) opts.headers['Referer'] = ref;
+function fetch(url) {
+  return new Promise(r => {
+    const opts = {headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}, timeout:8000};
     https.get(url, opts, res => {
       let d = '';
       res.on('data', c => d += c);
-      res.on('end', () => resolve(d));
-    }).on('error', () => resolve(''));
+      res.on('end', () => r(d));
+    }).on('error', () => r(''));
   });
 }
 
-// ====== 同花顺 ======
-async function getTHS() {
+function extract(html, pat, minLen, maxCount) {
+  const seen = new Set(), items = [];
+  const re = new RegExp(pat, 'g'); let m;
+  while ((m = re.exec(html)) && items.length < (maxCount || 5)) {
+    const t = m[1].trim();
+    if (t.length > (minLen||6) && t.length < 55 && !seen.has(t.substring(0,8)) && !t.includes('更多') && !t.includes('广告')) {
+      seen.add(t.substring(0,8)); items.push(t);
+    }
+  }
+  return items;
+}
+
+// ====== 20 Data Sources ======
+
+// 1. 同花顺
+async function s1() {
   try {
-    const json = await fetch('https://news.10jqka.com.cn/tapp/news/push/stock?type=all');
-    const data = JSON.parse(json);
-    return (data.data && data.data.list || []).filter(i => i.title && i.title.length > 4).map(i => ({
-      t: i.title.trim().substring(0, 60),
-      s: (i.digest || '').replace(/<[^>]+>/g, '').trim().substring(0, 100) || '同花顺快讯',
-      src: '同花顺',
-      u: 'https://www.10jqka.com.cn/'
+    const j = JSON.parse(await fetch('https://news.10jqka.com.cn/tapp/news/push/stock?type=all'));
+    return (j.data && j.data.list || []).filter(i => i.title && i.title.length > 4).slice(0, 10).map(i => ({
+      t: i.title.trim().substring(0,55), s: (i.digest||'').replace(/<[^>]+>/g,'').trim().substring(0,80)||'同花顺快讯',
+      src: '同花顺', u: 'https://www.10jqka.com.cn/'
     }));
   } catch(e) { return []; }
 }
 
-// ====== 华尔街见闻 (API) ======
-async function getWallStreet() {
+// 2. 华尔街见闻
+async function s2() {
   try {
-    const json = await fetch('https://api.wallstreetcn.com/apiv1/content/lives?channel=global-channel&limit=8');
-    const data = JSON.parse(json);
-    if (data.data && data.data.items) {
-      return data.data.items.filter(i => i.title || i.content_text).map(i => ({
-        t: (i.title || i.content_text || '').replace(/<[^>]+>/g, '').trim().substring(0, 55),
-        s: '见闻快讯',
-        src: '华尔街见闻',
-        u: i.uri ? 'https://wallstreetcn.com' + i.uri : 'https://wallstreetcn.com/'
-      }));
-    }
+    const d = JSON.parse(await fetch('https://api.wallstreetcn.com/apiv1/content/lives?channel=global-channel&limit=8'));
+    if (d.data && d.data.items) return d.data.items.filter(i => i.title || i.content_text).map(i => ({
+      t: (i.title || i.content_text||'').replace(/<[^>]+>/g,'').trim().substring(0,55), s: '见闻快讯', src: '华尔街见闻',
+      u: i.uri ? 'https://wallstreetcn.com'+i.uri : 'https://wallstreetcn.com/'
+    }));
     return [];
   } catch(e) { return []; }
 }
 
-// ====== 财联社 (页面解析) ======
-async function getCailian() {
+// 3. 财联社
+async function s3() {
   try {
-    const html = await fetch('https://www.cls.cn/');
-    const items = [];
-    const re = /"title"\s*:\s*"([^"]+)"/g;
-    let m;
-    const seen = new Set();
-    while ((m = re.exec(html)) !== null) {
+    const h = await fetch('https://www.cls.cn/');
+    return extract(h, '"title"\\s*:\\s*"([^"]+)"', 6, 5).map(t => ({t, s:'电报快讯', src:'财联社', u:'https://www.cls.cn/'}));
+  } catch(e) { return []; }
+}
+
+// 4. 第一财经
+async function s4() {
+  try {
+    const h = await fetch('https://www.yicai.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https:\/\/www\.yicai\.com\/news\/[^"]+)"[^>]*>([^<]{8,55})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].replace(/[<>]/g,'').trim();
+      if (t.length > 8 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t:t.substring(0,50), u:m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'一财', src:'第一财经', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 5. 网易新闻
+async function s5() {
+  try {
+    const h = await fetch('https://news.163.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https:\/\/news\.163\.com\/[^"]+)"[^>]*>([^<]{8,45})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (t.length > 8 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t:t.substring(0,50), u:m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'网易精选', src:'网易新闻', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 6. 新浪财经
+async function s6() {
+  try {
+    const h = await fetch('https://finance.sina.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https:\/\/finance\.sina\.com\.cn[^"]*)"[^>]*>([^<]{8,45})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8)) && !t.includes('更多') && !t.includes('客户端')) {
+        seen.add(t.substring(0,8)); items.push({t:t.substring(0,50), u:m[1]});
+      }
+    }
+    return items.map(i => ({t:i.t, s:'财经资讯', src:'新浪财经', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 7. 新华网
+async function s7() {
+  try {
+    const h = await fetch('https://www.xinhuanet.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="([^"]+\.htm)"[^>]*>([^<]{8,45})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8)) && !t.includes('English') && !t.includes('Рус') && !t.includes('Portugu') && !t.includes('更多')) {
+        seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]});
+      }
+    }
+    return items.map(i => ({t:i.t, s:'官方发布', src:'新华网', u: i.u.startsWith('http') ? i.u : 'https://www.xinhuanet.com'+i.u}));
+  } catch(e) { return []; }
+}
+
+// 8. 人民网
+async function s8() {
+  try {
+    const h = await fetch('https://www.people.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/[^"]*people\.com\.cn[^"]*)"[^>]*>([^<]{8,45})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8)) && !t.includes('许可证') && !t.includes('电信') && !t.includes('广告') && !t.includes('更多')) {
+        seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]});
+      }
+    }
+    return items.map(i => ({t:i.t, s:'人民网', src:'人民网', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 9. 中国新闻网
+async function s9() {
+  try {
+    const h = await fetch('https://www.chinanews.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.chinanews\.com\.cn[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'即时新闻', src:'中国新闻网', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 10. 央视新闻
+async function s10() {
+  try {
+    const h = await fetch('https://news.cctv.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/news\.cctv\.com[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'央视报道', src:'央视新闻', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 11. 凤凰网
+async function s11() {
+  try {
+    const h = await fetch('https://www.ifeng.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/[^"]*ifeng\.com[^"]*)"[^>]*>([^<]{8,45})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8)) && !t.includes('查看') && !t.includes('更多') && !t.includes('PHOENIX')) {
+        seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]});
+      }
+    }
+    return items.map(i => ({t:i.t, s:'凤凰网评', src:'凤凰网', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 12. 财新网
+async function s12() {
+  try {
+    const h = await fetch('https://www.caixin.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.caixin\.com[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'财新独家', src:'财新网', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 13. 每日经济新闻
+async function s13() {
+  try {
+    const h = await fetch('https://www.nbd.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.nbd\.com\.cn[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'每经资讯', src:'每日经济新闻', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 14. 证券时报
+async function s14() {
+  try {
+    const h = await fetch('https://www.stcn.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.stcn\.com[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'券商中国', src:'证券时报', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 15. 中国证券报
+async function s15() {
+  try {
+    const h = await fetch('https://www.cs.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.cs\.com\.cn[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'中证报', src:'中国证券报', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 16. IT之家
+async function s16() {
+  try {
+    const h = await fetch('https://www.ithome.com/');
+    const re2 = /<a[^>]*href="(\/\d+\/\d+\/\d+\.htm)"[^>]*>/g; const urls = []; let m2;
+    while ((m2 = re2.exec(h)) && urls.length < 3) urls.push(m2[1]);
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="\/\d+\/\d+\/\d+\.htm"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
       const t = m[1].trim();
-      if (t.length > 6 && t.length < 55 && !seen.has(t.substring(0, 8))) {
-        seen.add(t.substring(0, 8));
-        items.push({ t: t, s: '电报快讯', src: '财联社', u: 'https://www.cls.cn/' });
-        if (items.length >= 5) break;
-      }
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push(t); }
     }
-    return items;
+    return items.map((t,i) => ({t: t.substring(0,50), s:'科技资讯', src:'IT之家', u: urls[i] ? 'https://www.ithome.com'+urls[i] : 'https://www.ithome.com/'}));
   } catch(e) { return []; }
 }
 
-// ====== 第一财经 ======
-async function getYicai() {
+// 17. 百度热搜
+async function s17() {
   try {
-    const html = await fetch('https://www.yicai.com/');
+    const h = await fetch('https://top.baidu.com/board?tab=realtime');
     const items = [];
-    const re = /<a[^>]*href="(https:\/\/www\.yicai\.com\/news\/[^"]+)"[^>]*>([^<]{8,55})<\/a>/g;
-    let m;
-    while ((m = re.exec(html)) !== null) {
-      const t = m[2].replace(/[<>]/g, '').trim();
-      if (t.length > 8 && items.length < 4) {
-        items.push({ t: t, s: '深度财经', src: '第一财经', u: m[1] });
-      }
-    }
-    return items;
-  } catch(e) { return []; }
-}
-
-// ====== 百度热搜 ======
-async function getBaiduHot() {
-  try {
-    const html = await fetch('https://top.baidu.com/board?tab=realtime');
-    const items = [];
-    const patterns = [/data-title="([^"]+)"/g, /"word":"([^"]+)"/g];
-    for (const re of patterns) {
-      let m;
-      while ((m = re.exec(html)) !== null) {
+    for (const re of [/data-title="([^"]+)"/g, /"word":"([^"]+)"/g]) {
+      const seen = new Set(); let m;
+      while ((m = re.exec(h)) && items.length < 6) {
         const t = m[1].trim();
-        if (t.length > 3 && t.length < 40 && items.length < 8) {
-          items.push({ t: t.substring(0, 45), s: '热搜话题', src: '百度热搜', u: 'https://www.baidu.com/s?wd=' + encodeURIComponent(t) });
-        }
+        if (t.length > 3 && !seen.has(t.substring(0,6))) { seen.add(t.substring(0,6)); items.push({t: t.substring(0,40), u: 'https://www.baidu.com/s?wd='+encodeURIComponent(t)}); }
       }
-      if (items.length >= 3) break;
+      if (items.length >= 4) break;
     }
-    return items;
+    return items.map(i => ({t:i.t, s:'热搜话题', src:'百度热搜', u:i.u}));
   } catch(e) { return []; }
 }
 
-// ====== 光明网 ======
-async function getGmw() {
+// 18. 虎嗅
+async function s18() {
   try {
-    const html = await fetch('https://www.gmw.cn/');
-    const items = [];
-    const re = /<a[^>]*href="(https?:\/\/[a-z0-9]+\.gmw\.cn[^"]*)"[^>]*>([^<]{8,40})<\/a>/g;
-    let m;
-    while ((m = re.exec(html)) !== null) {
+    const h = await fetch('https://www.huxiu.com/');
+    const items = extract(h, '<a[^>]*href="/article/\\d+\\.html"[^>]*>([^<]{6,45})<\\/a>', 6, 3);
+    const re = /<a[^>]*href="(\/article\/\d+\.html)"[^>]*>/g; const urls = []; let m;
+    while ((m = re.exec(h)) && urls.length < 3) urls.push(m[1]);
+    return items.map((t,i) => ({t: t.substring(0,45), s:'深度商业', src:'虎嗅', u: urls[i] ? 'https://www.huxiu.com'+urls[i] : 'https://www.huxiu.com/'}));
+  } catch(e) { return []; }
+}
+
+// 19. 品玩
+async function s19() {
+  try {
+    const h = await fetch('https://www.pingwest.com/');
+    const items = extract(h, '"title":"([^"]+)"', 8, 3);
+    return items.map(t => ({t: t.substring(0,45), s:'科技观察', src:'品玩', u:'https://www.pingwest.com/'}));
+  } catch(e) { return []; }
+}
+
+// 20. Donews
+async function s20() {
+  try {
+    const h = await fetch('https://www.donews.com/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.donews\.com[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
       const t = m[2].trim();
-      if (t.length > 8 && !t.includes('更多') && items.length < 3) {
-        items.push({ t: t, s: '时政要闻', src: '光明网', u: m[1] });
-      }
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
     }
-    return items;
+    return items.map(i => ({t:i.t, s:'互联网资讯', src:'Donews', u:i.u}));
   } catch(e) { return []; }
 }
 
-// ====== 南方周末 ======
-async function getInfzm() {
-  try {
-    const html = await fetch('https://www.infzm.com/');
-    const items = [];
-    const re = /"title":"([^"]+)"/g;
-    let m;
-    while ((m = re.exec(html)) !== null) {
-      const t = m[1].trim();
-      if (t.length > 8 && items.length < 4) {
-        items.push({ t: t.substring(0, 45), s: '深度报道', src: '南方周末', u: 'https://www.infzm.com/' });
-      }
-    }
-    return items;
-  } catch(e) { return []; }
-}
-
-// ====== 新浪财经 ======
-async function getSina() {
-  try {
-    const html = await fetch('https://finance.sina.com.cn/');
-    const items = [];
-    const re = /<a[^>]*href="(https?:\/\/finance\.sina\.com\.cn[^"]*)"[^>]*>([^<]{8,45})<\/a>/g;
-    let m;
-    while ((m = re.exec(html)) !== null) {
-      const t = m[2].trim();
-      if (!t.includes('更多') && !t.includes('客户端') && items.length < 4) {
-        items.push({ t: t.substring(0, 50), s: '财经资讯', src: '新浪财经', u: m[1] });
-      }
-    }
-    return items;
-  } catch(e) { return []; }
-}
-
-// ====== 股票数据 ======
+// ====== Stocks & Forex ======
 async function getStocks() {
   try {
-    const json = await fetch('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000688,1.000300,1.000016,1.000905,0.399001');
-    const data = JSON.parse(json);
-    if (!data.data || !data.data.diff) return [];
-    return data.data.diff.slice(0, 8).map(s => {
-      const pct = ((s.f3 || 0)).toFixed(2);
-      return { n: s.f14 || '--', v: (s.f2 || 0).toFixed(2), c: (pct >= 0 ? '+' : '') + pct + '%', cls: pct >= 0 ? 'up' : 'down' };
-    });
+    const d = JSON.parse(await fetch('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000688,1.000300,1.000016,1.000905,0.399001'));
+    if (!d.data || !d.data.diff) return [];
+    return d.data.diff.slice(0,8).map(s => ({n:s.f14||'--', v:(s.f2||0).toFixed(2), c:((s.f3||0)>=0?'+':'')+(s.f3||0).toFixed(2)+'%', cls:(s.f3||0)>=0?'up':'down'}));
   } catch(e) { return []; }
 }
-
-// ====== 汇率 ======
 async function getForex() {
   try {
-    const json = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
-    const data = JSON.parse(json);
-    const r = data.rates;
-    return { USD: (1/r.USD).toFixed(4), EUR: (1/r.EUR).toFixed(4), JPY: (1/r.JPY).toFixed(4),
-             GBP: (1/r.GBP).toFixed(4), HKD: (1/r.HKD).toFixed(4), KRW: (1/r.KRW).toFixed(4) };
+    const d = JSON.parse(await fetch('https://api.exchangerate-api.com/v4/latest/CNY')); const r = d.rates;
+    return {USD:(1/r.USD).toFixed(4), EUR:(1/r.EUR).toFixed(4), JPY:(1/r.JPY).toFixed(4), GBP:(1/r.GBP).toFixed(4), HKD:(1/r.HKD).toFixed(4), KRW:(1/r.KRW).toFixed(4)};
   } catch(e) { return {}; }
 }
 
-// ====== 智能分类 ======
+// ====== Classify ======
 function classify(items) {
-  const world=[], tech=[], china=[], finance=[], sports=[], entertain=[], health=[], other=[];
+  const w=[], t=[], c=[], f=[], s=[], e=[], h=[];
   for (const item of items) {
-    const tt = item.t + ' ' + item.s;
-    if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌|金牌|银牌/.test(tt)) sports.push(item);
-    else if (/AI|人工智能|科技|5G|6G|芯片|算力|软件|华为|数字|互联网|大模型|GPT|元宇宙|量子|卫星|航天|火箭|SpaceX|特斯拉|苹果|微软|谷歌|OpenAI|专利|算法|数据|区块链|自动化|智能|机器人|电动车|光伏|新能源|储能/.test(tt)) tech.push(item);
-    else if (/电影|票房|音乐|演唱会|综艺|游戏|明星|导演|电视剧|Netflix|迪士尼|B站|抖音|快手|综艺|舞台|广告|视频|直播|演出/.test(tt)) entertain.push(item);
-    else if (/健康|养生|运动|饮食|睡眠|药|医院|疫苗|新冠|中医|营养|健身|减肥|体检|医保|医疗/.test(tt)) health.push(item);
-    else if (/A股|沪指|深指|北向|证监会|注册制|分红|涨停|券商|基金|私募|公募|科创板|创业板|上证|深证|沪深|北交所|股份|股票|上市|退市|财报|业绩/.test(tt)) china.push(item);
-    else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI|财报|利润|营收/.test(tt)) finance.push(item);
-    else if (/伊朗|古巴|特朗普|制裁|美国|德国|北约|中东|国际|石油|非盟|G20|以军|巴以|欧盟|俄罗斯|乌克兰|外交|撤军|欧洲|英国|法国|日本|韩国|朝鲜|印度|联合国|世贸|WTO|难民|移民|空袭|会谈|峰会|大使|外长|总统|国会|参议院|地震|海啸|间谍|爆炸|袭击|逮捕/.test(tt)) world.push(item);
-    else if (/公积金|贷款|房地产|楼市|房价|租房|消费|购物|旅游|五一|假期|高速|公路/.test(tt)) other.push(item);
-    else world.push(item);
+    const tt = item.t + ' ' + (item.s||'');
+    if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌/.test(tt)) s.push(item);
+    else if (/AI|人工智能|科技|5G|6G|芯片|算力|软件|华为|数字|互联网|大模型|GPT|元宇宙|量子|卫星|航天|火箭|SpaceX|特斯拉|苹果|微软|谷歌|OpenAI|专利|算法|数据|区块链|自动化|智能|机器人|电动车|光伏|新能源|储能|电脑|手机|IT/.test(tt)) t.push(item);
+    else if (/电影|票房|音乐|演唱会|综艺|游戏|明星|导演|电视剧|Netflix|迪士尼|B站|抖音|快手|舞台|广告|视频|直播|演出/.test(tt)) e.push(item);
+    else if (/健康|养生|运动|饮食|睡眠|药|医院|疫苗|新冠|中医|营养|健身|减肥|体检|医保|医疗/.test(tt)) h.push(item);
+    else if (/A股|沪指|深指|北向|证监会|注册制|分红|涨停|券商|基金|私募|公募|科创板|创业板|上证|深证|沪深|北交所|股份|股票|上市|退市|财报|业绩|净利润|营收|利润|亏损|同比|增长|股东/.test(tt)) c.push(item);
+    else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI|关税/.test(tt)) f.push(item);
+    else if (/伊朗|古巴|特朗普|制裁|美国|德国|北约|中东|国际|石油|非盟|G20|以军|巴以|欧盟|俄罗斯|乌克兰|外交|撤军|欧洲|英国|法国|日本|韩国|朝鲜|印度|联合国|世贸|WTO|难民|移民|空袭|会谈|峰会|大使|外长|总统|国会|参议院|地震|海啸|间谍|爆炸|袭击|逮捕|战争/.test(tt)) w.push(item);
+    else if (/公积金|贷款|房地产|楼市|房价|租房|消费|购物|旅游|五一|假期|高速|公路|出行/.test(tt)) c.push(item);
+    else if (/习近平|总书记|国务院|发改委|政策|政府|报告|代表|委员|两会|部署|战略/.test(tt)) c.push(item);
+    else w.push(item);
   }
-  return { world, tech, china, finance, sports, entertain, health, other };
+  return {world:w, tech:t, china:c, finance:f, sports:s, entertain:e, health:h};
 }
 
 function getDate() {
-  const d = new Date();
-  d.setHours(d.getHours() + 8);
-  const wd = ['日','一','二','三','四','五','六'];
-  return `${d.getUTCFullYear()}年${d.getUTCMonth()+1}月${d.getUTCDate()}日 星期${wd[d.getUTCDay()]}`;
+  const d = new Date(); d.setHours(d.getHours() + 8);
+  return d.getUTCFullYear()+'年'+(d.getUTCMonth()+1)+'月'+d.getUTCDate()+'日 星期'+['日','一','二','三','四','五','六'][d.getUTCDay()];
 }
 
-function buildPage(date, sections, stocks, weatherList, fxRates, stats) {
-  const names = {world:'国际',tech:'科技',china:'A股',finance:'财经',sports:'体育',entertain:'娱乐',health:'健康',today:'历史',market:'行情',weather:'天气',forex:'汇率'};
-  const nav = Object.keys(names).map(id => `<a href="#" onclick="document.getElementById('s-${id}').scrollIntoView({behavior:'smooth'});return false">${names[id]}</a>`).join('');
-
-  function card(it, i) {
-    const u = it.u || '#';
-    return `<div class="nc" onclick="window.open('${u.replace(/'/g, "%27")}','_blank')"><div class="nt"><span class="ni">${i+1}</span>${it.t}</div><div class="ns">${it.s}</div><div class="nm">📌 ${it.src}</div></div>`;
-  }
-  function sec(s) {
-    let h = `<div class="se" id="s-${s.id}"><div class="sh"><span class="si">${s.icon}</span><span class="st">${s.title}</span><span class="scount">${s.items.length}</span></div>`;
-    if (s.tags && s.tags.length) h += '<div class="tags">' + s.tags.map(t => `<span>#${t}</span>`).join('') + '</div>';
-    h += s.items.map((it, i) => card(it, i)).join('');
-    return h + '</div>';
-  }
-
+function buildPage(date, sections, stocks, weather, fx, stats) {
+  const nm = {world:'国际',tech:'科技',china:'A股/民生',finance:'财经',sports:'体育',entertain:'文娱',health:'健康',today:'历史',market:'行情',weather:'天气',forex:'汇率'};
+  const nav = Object.keys(nm).map(id => `<a href="#s-${id}">${nm[id]}</a>`).join('');
   const total = sections.reduce((a,s) => a + s.items.length, 0);
-  const stockRows = stocks.length ? stocks.map(s => `<div class="si2"><div class="sn">${s.n}</div><div class="sv">${s.v}</div><div class="sc ${s.cls}">${s.c}</div></div>`).join('') :
-    '<div class="si2" style="grid-column:1/-1;text-align:center;color:#6b7a8d">行情加载中</div>';
-  const wRows = weatherList.map(f => `<div class="wd"><div class="wdn">${f.d}</div><div class="wdi">${f.i}</div><div class="wdt">${f.t}</div><div class="wdd">${f.c}</div></div>`).join('');
-  const fkeys = ['USD','EUR','JPY','GBP','HKD','KRW'];
-  const fpairs = ['USD/CNY','EUR/CNY','JPY/CNY','GBP/CNY','HKD/CNY','KRW/CNY'];
-  const fRows = fkeys.map((k, i) => `<div class="fi"><div class="fp">${fpairs[i]}</div><div class="fr">${fxRates[k] || '--'}</div></div>`).join('');
-  const secs = sections.map(s => sec(s)).join('');
 
-  const sourceList = ['同花顺','华尔街见闻','财联社','第一财经','百度热搜','光明网','南方周末','新浪财经','东方财富'];
-  const sourceStr = sourceList.join(' · ');
+  const secs = sections.map(s => {
+    let h = `<div class="se" id="s-${s.id}"><div class="sh"><span class="si">${s.icon}</span><span class="st">${s.title}</span><span class="sc">${s.items.length}</span></div>`;
+    h += s.items.map((it, i) => {
+      const u = (it.u||'#').replace(/'/g, '%27');
+      return `<div class="nc" onclick="window.open('${u}','_blank')"><div class="nt"><span class="ni">${i+1}</span>${it.t}</div><div class="nm">${it.src}</div></div>`;
+    }).join('');
+    return h + '</div>';
+  }).join('');
 
-  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>每日全球资讯早报</title><style>
+  const sr = stocks.length ? stocks.map(s => `<div class="si2"><div class="sn">${s.n}</div><div class="sv">${s.v}</div><div class="sc2 ${s.cls}">${s.c}</div></div>`).join('') : '';
+  const wr = weather.map(f => `<div class="wd"><div class="wdn">${f.d}</div><div class="wdi">${f.i}</div><div class="wdt">${f.t}</div><div class="wdd">${f.c}</div></div>`).join('');
+  const fk = ['USD','EUR','JPY','GBP','HKD','KRW'];
+  const fp = ['USD/CNY','EUR/CNY','JPY/CNY','GBP/CNY','HKD/CNY','KRW/CNY'];
+  const fr = fk.map((k,i) => `<div class="fi"><div class="fp">${fp[i]}</div><div class="fr">${fx[k]||'--'}</div></div>`).join('');
+
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>每日全球资讯</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0c0f1a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
-.app{max-width:780px;margin:0 auto;padding:0 16px 40px}
-header{padding:24px 0 10px;border-bottom:1px solid rgba(42,48,69,0.4);margin-bottom:20px}
-.tb{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.date{font-size:14px;color:#94a3b8}.live{background:rgba(34,197,94,0.1);color:#22c55e;padding:2px 10px;border-radius:8px;font-size:11px;letter-spacing:0.3px}
-nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-nav a{color:#8896a6;text-decoration:none;font-size:13px;padding:5px 14px;border-radius:14px;background:rgba(255,255,255,0.03);transition:all 0.15s}
-nav a:hover{background:rgba(59,130,246,0.12);color:#60a5fa}
-.se{background:#161b2a;border:1px solid rgba(42,48,69,0.5);border-radius:12px;padding:16px;margin-bottom:14px;transition:border-color 0.15s}
-.se:hover{border-color:rgba(59,130,246,0.15)}
-.sh{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.si{font-size:20px;width:28px;text-align:center}.st{font-size:16px;font-weight:600;color:#f1f5f9}
-.scount{font-size:11px;background:rgba(99,102,241,0.1);color:#818cf8;padding:0 8px;border-radius:8px;line-height:20px}
-.nc{padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;margin:0 -4px;padding:10px 4px;border-radius:4px}
-.nc:last-child{border-bottom:none}.nc:hover{background:rgba(255,255,255,0.02)}
-.nt{font-size:14px;font-weight:500;color:#f1f5f9;margin-bottom:5px;display:flex;align-items:flex-start;gap:8px}
-.ni{display:inline-flex;width:20px;height:20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-size:10px;font-weight:700;border-radius:4px;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
-.ns{font-size:13px;color:#7c8a9c;margin-bottom:4px;padding-left:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.nm{font-size:11px;color:#5a6a7d;padding-left:28px}
-.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.si2{background:rgba(255,255,255,0.02);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
-.sn{font-size:12px;color:#94a3b8}.sv{font-size:14px;font-weight:600;color:#f1f5f9}.sc{font-size:12px;font-weight:500}
-.up{color:#22c55e}.down{color:#ef4444}.flat{color:#6b7a8d}
-.w3d{display:flex;gap:10px}
-.wd{flex:1;text-align:center;background:rgba(255,255,255,0.02);border-radius:8px;padding:14px 4px}
-.wdn{font-size:12px;color:#94a3b8;margin-bottom:6px}.wdi{font-size:30px;margin-bottom:6px}
-.wdt{font-size:14px;font-weight:600;margin-bottom:4px}.wdd{font-size:11px;color:#7c8a9c}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.fi{background:rgba(255,255,255,0.02);border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center}
-.fp{font-size:13px;color:#94a3b8}.fr{font-size:14px;font-weight:600;color:#f1f5f9}
-footer{margin-top:32px;padding:20px 0;text-align:center;border-top:1px solid rgba(42,48,69,0.4)}
-footer p{font-size:11px;color:#5a6a7d;margin-bottom:3px}
-  </style></head><body><div class="app">
-  <header><div class="tb"><div class="date">📅 ${date}</div><div class="live">${total}条 · 聚合${stats.sources}个来源</div></div>
-  <nav>${nav}</nav></header>
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-bottom:18px">
-    <div style="font-size:12px;color:#5a6a7d">点击标题查看详情</div>
-    <div style="font-size:12px;color:#5a6a7d">USD/CNY ${fxRates.USD || '--'}</div>
-  </div>
-  <div class="se" id="s-market"><div class="sh"><span class="si">📊</span><span class="st">全球指数</span><span class="scount">${stocks.length}</span></div><div class="sg">${stockRows}</div></div>
-  <div class="se" id="s-weather"><div class="sh"><span class="si">🌤️</span><span class="st">泗阳天气</span></div><div class="w3d">${wRows}</div></div>
-  ${secs}
-  <div class="se" id="s-forex"><div class="sh"><span class="si">💱</span><span class="st">外汇汇率</span><span class="scount">6</span></div><div class="fg">${fRows}</div></div>
-  <div class="se" style="border-style:dashed"><div style="padding:16px;text-align:center;font-size:11px;color:#5a6a7d;line-height:1.7">${sourceStr}<br>每日 08:00 / 12:00 / 18:00 / 22:00 自动更新 · 公开 · 免费 · 仅供参考</div></div>
-  <footer><p>📡 数据仅供个人参考 · 不构成投资建议</p></footer>
-</div></body></html>`;
+body{background:#0b0e16;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
+.app{max-width:800px;margin:0 auto;padding:0 16px 40px}
+header{padding:24px 0 14px;margin-bottom:16px}
+.tb{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.date{font-size:13px;color:#8896a6}.live{background:rgba(34,197,94,0.08);color:#22c55e;padding:2px 10px;border-radius:10px;font-size:11px}
+nav{display:flex;gap:5px;flex-wrap:wrap}
+nav a{color:#8896a6;text-decoration:none;font-size:12px;padding:4px 12px;border-radius:12px;background:rgba(255,255,255,0.03)}
+nav a:hover{background:rgba(59,130,246,0.1);color:#60a5fa}
+.se{background:#151a28;border:1px solid rgba(42,48,69,0.4);border-radius:10px;padding:14px;margin-bottom:14px}
+.sh{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.si{font-size:18px;width:26px;text-align:center}.st{font-size:15px;font-weight:600;color:#f1f5f9}
+.sc{font-size:11px;background:rgba(99,102,241,0.08);color:#818cf8;padding:0 8px;border-radius:8px;line-height:20px;margin-left:auto}
+.nc{padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.02);cursor:pointer;margin:0 -4px;padding:8px 4px;border-radius:4px}
+.nc:last-child{border-bottom:none}.nc:hover{background:rgba(255,255,255,0.015)}
+.nt{font-size:13px;font-weight:500;color:#f1f5f9;margin-bottom:3px;display:flex;align-items:flex-start;gap:6px}
+.ni{display:inline-flex;width:18px;height:18px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;font-size:9px;font-weight:700;border-radius:3px;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.nm{font-size:10px;color:#5a6a7d;padding-left:24px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.si2{background:rgba(255,255,255,0.02);border-radius:6px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center}
+.sn{font-size:11px;color:#8896a6}.sv{font-size:13px;font-weight:600;color:#f1f5f9}.sc2{font-size:11px;font-weight:500}
+.up{color:#22c55e}.down{color:#ef4444}
+.w3d{display:flex;gap:8px}.wd{flex:1;text-align:center;background:rgba(255,255,255,0.02);border-radius:8px;padding:10px 4px}
+.wdn{font-size:11px;color:#8896a6;margin-bottom:4px}.wdi{font-size:28px;margin-bottom:4px}.wdt{font-size:13px;font-weight:600}.wdd{font-size:10px;color:#6b7a8d}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.fi{background:rgba(255,255,255,0.02);border-radius:5px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center}
+.fp{font-size:12px;color:#8896a6}.fr{font-size:13px;font-weight:600;color:#f1f5f9}
+footer{margin-top:24px;padding:16px 0;text-align:center;border-top:1px solid rgba(42,48,69,0.3)}
+footer p{font-size:10px;color:#5a6a7d;margin-bottom:2px}
+</style></head><body><div class="app">
+<header><div class="tb"><div class="date">📅 ${date}</div><div class="live">${total}条 · ${stats.sources}个来源</div></div><nav>${nav}</nav></header>
+<div style="display:flex;justify-content:space-between;padding:0 2px;margin-bottom:12px;font-size:11px;color:#5a6a7d"><span>${stats.names}</span><span>${fx.USD?'USD/CNY '+fx.USD:''}</span></div>
+${stocks.length ? '<div class="se" id="s-market"><div class="sh"><span class="si">📊</span><span class="st">全球指数</span></div><div class="sg">'+sr+'</div></div>' : ''}
+<div class="se" id="s-weather"><div class="sh"><span class="si">🌤️</span><span class="st">泗阳天气</span></div><div class="w3d">${wr}</div></div>
+${secs}
+<div class="se" id="s-forex"><div class="sh"><span class="si">💱</span><span class="st">外汇汇率</span><span class="sc">6</span></div><div class="fg">${fr}</div></div>
+<div class="se" style="border-style:dashed"><div style="padding:12px;text-align:center;font-size:10px;color:#5a6a7d;line-height:1.6">${stats.names}<br>每日 08:00 / 12:00 / 18:00 / 22:00 · 公开 · 免费 · 仅供参考</div></div>
+<footer><p>自动聚合 · 不构成投资建议</p></footer></div></body></html>`;
 }
 
+// ====== Main ======
 async function main() {
   const date = getDate();
-  console.log('=== 多源聚合新闻 (' + date + ') ===');
+  console.log('=== 全源聚合 ('+date+') ===');
+  console.time('all');
 
-  const [ths, wscn, cls, yicai, baidu, gmw, infzm, sina, stocks, fx] = await Promise.all([
-    getTHS(), getWallStreet(), getCailian(), getYicai(), getBaiduHot(), getGmw(), getInfzm(), getSina(),
-    getStocks(), getForex()
+  const results = await Promise.all([
+    s1(),s2(),s3(),s4(),s5(),s6(),s7(),s8(),s9(),s10(),
+    s11(),s12(),s13(),s14(),s15(),s16(),s17(),s18(),s19(),s20()
   ]);
 
-  const sources = {};
-  [ths, wscn, cls, yicai, baidu, gmw, infzm, sina].forEach(arr => {
-    arr.forEach(i => { sources[i.src] = (sources[i.src] || 0) + 1; });
-  });
-  console.log('\n来源:');
-  Object.entries(sources).forEach(([k,v]) => console.log(`  ${k}: ${v}`));
-  console.log('  股票:', stocks.length > 0 ? 'live ✅' : 'fallback');
-  console.log('  汇率:', fx.USD ? 'live ✅' : 'fallback');
+  const [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20] = results;
 
-  const allNews = [...ths, ...wscn, ...cls, ...yicai, ...baidu, ...gmw, ...infzm, ...sina];
+  const namesArr = [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20];
+  const labels = ['同花顺','华尔街见闻','财联社','第一财经','网易','新浪财经','新华网','人民网','中国新闻网','央视新闻',
+    '凤凰网','财新网','每经','证券时报','中证报','IT之家','百度','虎嗅','品玩','Donews'];
+
+  const cnt = {}; let totalSrc = 0;
+  namesArr.forEach((arr, idx) => { if (arr.length) { cnt[labels[idx]] = arr.length; totalSrc += arr.length; }});
+
+  console.log('来源('+Object.keys(cnt).length+'):', Object.values(cnt).reduce((a,b)=>a+b,0), '条');
+  Object.entries(cnt).forEach(([k,v]) => console.log('  '+k+':'+v));
+
+  // Stocks & forex
+  const [stocks, fx] = await Promise.all([getStocks(), getForex()]);
+  console.log('  股票:', stocks.length > 0 ? 'live' : 'fallback', '| 汇率:', fx.USD ? 'live' : 'fallback');
+
+  // Merge + classify
+  const allNews = [].concat(...namesArr);
   const classified = classify(allNews);
-
   const seen = new Set();
-  for (const key of Object.keys(classified)) {
+  Object.keys(classified).forEach(key => {
     classified[key] = classified[key].filter(item => {
-      const hash = item.t.substring(0, 8);
-      if (seen.has(hash)) return false;
-      seen.add(hash);
-      return true;
-    });
-  }
+      const h = item.t.substring(0,8);
+      if (seen.has(h)) return false;
+      seen.add(h); return true;
 
-  console.log('\n分类:');
-  let totalItems = 0;
-  Object.entries(classified).forEach(([k,v]) => {
-    if (v.length && k !== 'other') { console.log(`  ${k}: ${v}`); totalItems += v.length; }
+    });
+  });
+
+  console.log('����:');
+  Object.entries(classified).forEach(([k,v])=>{
+    if(v.length) console.log('  '+k+':'+v.length);
   });
 
   const sections = [
-    { id:'world', title:'国际要闻', icon:'🌍', tags:[], items: classified.world.length > 1 ? classified.world : classified.world.concat([{t:'国际新闻动态',s:'多源实时聚合',src:'系统'}]) },
-    { id:'tech', title:'科技动态', icon:'💻', tags:[], items: classified.tech.length > 1 ? classified.tech : classified.tech.concat([{t:'科技前沿',s:'关注AI与数字产业',src:'系统'}]) },
-    { id:'china', title:'A股/民生', icon:'📈', tags:[], items: (classified.china.length + classified.other.length) > 1 ? [...classified.china, ...classified.other] : [{t:'A股市场',s:'沪深两市动态',src:'系统'}] },
-    { id:'finance', title:'财经焦点', icon:'💰', tags:[], items: classified.finance.length > 1 ? classified.finance : classified.finance.concat([{t:'金融市场',s:'宏观经济与资本动态',src:'系统'}]) },
-    { id:'sports', title:'体育赛事', icon:'⚽', tags:[], items: classified.sports.length > 1 ? classified.sports : [{t:'体育资讯',s:'最新赛事情报',src:'系统'}] },
-    { id:'entertain', title:'文娱热点', icon:'🎬', tags:[], items: classified.entertain.length > 1 ? classified.entertain : [{t:'文化娱乐',s:'影视音乐游戏动态',src:'系统'}] },
-    { id:'health', title:'健康生活', icon:'💪', tags:[], items: classified.health.length > 1 ? classified.health : [{t:'健康养生',s:'医疗健康资讯',src:'系统'}] },
-    { id:'today', title:'历史上的今天', icon:'📅', tags:[],
-      items:[
-        {t:'1519 — 达·芬奇逝世',s:'意大利文艺复兴巨匠，《蒙娜丽莎》《最后的晚餐》作者',src:'历史百科'},
-        {t:'1957 — 麦卡锡逝世',s:'美国参议员约瑟夫·麦卡锡，麦卡锡主义主导者',src:'历史百科'},
-        {t:'2003 — 中国海军首次环球航行',s:'青岛号驱逐舰和太仓号补给舰编队启航',src:'人民海军'}
-      ]
-    }
+    {id:'world',title:'����Ҫ��',icon:'??',items:classified.world.length?classified.world:[{t:'���޹�������',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'tech',title:'�Ƽ���̬',icon:'??',items:classified.tech.length?classified.tech:[{t:'���޿Ƽ���Ѷ',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'china',title:'A��/����',icon:'??',items:classified.china.length?classified.china:[{t:'���������Ѷ',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'finance',title:'�ƾ�����',icon:'??',items:classified.finance.length?classified.finance:[{t:'���޲ƾ���Ѷ',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'sports',title:'��������',icon:'?',items:classified.sports.length?classified.sports:[{t:'����������̬',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'entertain',title:'�����ȵ�',icon:'??',items:classified.entertain.length?classified.entertain:[{t:'����������Ѷ',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'health',title:'��������',icon:'??',items:classified.health.length?classified.health:[{t:'���޽�����Ѷ',s:'',src:'ϵͳ',u:'#'}]},
+    {id:'today',title:'��ʷ�ϵĽ���',icon:'??',items:[
+      {t:'1519�� �� ���������',s:'',src:'��ʷ',u:'#'},
+      {t:'1957�� �� ��������',s:'',src:'��ʷ',u:'#'},
+      {t:'2003�� �� �й������״λ�����',s:'',src:'��ʷ',u:'#'}
+    ]}
   ];
 
-  const total = sections.reduce((a,s) => a + s.items.length, 0);
-  console.log('\n展示:', total, '条 | 来源:', Object.keys(sources).length);
-  console.log('  同花顺:', ths.length, '| 华尔街见闻:', wscn.length, '| 财联社:', cls.length);
-  console.log('  第一财经:', yicai.length, '| 百度热搜:', baidu.length, '| 光明网:', gmw.length);
-  console.log('  南方周末:', infzm.length, '| 新浪财经:', sina.length);
+  const weather = [
+    {d:'����',i:'???',t:'14~17��C',c:'С��ת��'},
+    {d:'����',i:'???',t:'11~17��C',c:'��ת����'},
+    {d:'����',i:'??',t:'10~25��C',c:'��'}
+  ];
 
-  const html = buildPage(date, sections,
-    stocks.length ? stocks : [{n:'上证指数',v:'--',c:'--',cls:'flat'},{n:'深证成指',v:'--',c:'--',cls:'flat'},{n:'创业板指',v:'--',c:'--',cls:'flat'},{n:'科创50',v:'--',c:'--',cls:'flat'}],
-    [{d:'今天',i:'🌧️',t:'14~17°C',c:'小雨转阴'},{d:'明天',i:'🌫️',t:'11~17°C',c:'雾转阵雨'},{d:'后天',i:'☀️',t:'10~25°C',c:'晴'}],
-    fx.USD ? fx : { USD:'6.85',EUR:'8.00',JPY:'0.043',GBP:'9.26',HKD:'0.87',KRW:'0.0046' },
-    { sources: Object.keys(sources).length }
-  );
+  const stats = {
+    sources: Object.keys(cnt).length,
+    names: Object.keys(cnt).join(' �� ')
+  };
 
-  fs.writeFileSync('index.html', html, 'utf8');
-  console.log('\n✅ 生成:', html.length, 'bytes');
+  const html = buildPage(date, sections, stocks, weather, fx, stats);
+
+  const outPath = process.env.GITHUB_OUTPUT ? (process.env.GITHUB_WORKSPACE || '.') + '/index.html' : 'G:\\claw1232\\portable\\data\\.openclaw\\canvas\\daily-news\\index.html';
+  fs.writeFileSync(outPath, html, 'utf8');
+  console.log('\nд��: ' + outPath + ' (' + html.length + ' bytes)');
+  console.log('=== ��� ===');
 }
 
-main().catch(e => { console.error('Fatal:', e.message); process.exit(1); });
+main().catch(e => { console.error(e); process.exit(1); });
