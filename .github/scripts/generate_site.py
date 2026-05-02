@@ -17,19 +17,33 @@ all_news = []
 sources_data = data.get('news', [])
 labels = data.get('labels', [])
 
-for idx, items in enumerate(sources_data):
-    if not items or not isinstance(items, list):
-        continue
-    for item in items:
+# 支持两种格式：单层列表（merge后）或 嵌套列表（旧版）
+if sources_data and not isinstance(sources_data[0], list):
+    # 单层列表：merge后的格式
+    for item in sources_data:
         t = (item.get('t') or item.get('title') or '').strip()[:60]
         if len(t) < 5:
             continue
         all_news.append({
             't': t,
             's': item.get('s', '资讯'),
-            'src': item.get('src', labels[idx] if idx < len(labels) else str(idx)),
+            'src': item.get('src', '资讯'),
             'u': escape(item.get('u', '#'), quote=True)
         })
+else:
+    for idx, items in enumerate(sources_data):
+        if not items or not isinstance(items, list):
+            continue
+        for item in items:
+            t = (item.get('t') or item.get('title') or '').strip()[:60]
+            if len(t) < 5:
+                continue
+            all_news.append({
+                't': t,
+                's': item.get('s', '资讯'),
+                'src': item.get('src', labels[idx] if idx < len(labels) else str(idx)),
+                'u': escape(item.get('u', '#'), quote=True)
+            })
 
 total = len(all_news)
 active_srcs = sorted(set(n['src'] for n in all_news))
