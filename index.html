@@ -3,129 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>每日全球资讯早报</title>
+    <title>每日全球资讯早报 · Tffdbb</title>
+    <meta name="description" content="每日全球资讯早报 - 国际要闻、科技动态、中国市场、生活参考，每天8:00更新">
     <style>
         :root {
             --bg: #0c0f1a;
+            --bg2: #111624;
             --card: #1a1f2e;
             --card-hover: #232a3d;
             --accent: #3b82f6;
             --accent-light: #60a5fa;
             --accent2: #a78bfa;
+            --accent3: #f472b6;
             --text: #f1f5f9;
             --muted: #8896a6;
+            --muted2: #6b7a8d;
             --border: #2a3045;
             --green: #22c55e;
             --red: #ef4444;
             --gold: #f59e0b;
             --cyan: #06b6d4;
+            --orange: #fb923c;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
             background: var(--bg);
             color: var(--text);
             line-height: 1.7;
+            scroll-behavior: smooth;
         }
+        ::selection { background: rgba(59,130,246,0.3); color: #fff; }
 
-        /* Top Nav Bar */
+        /* Top Bar */
         .topbar {
             position: sticky; top: 0; z-index: 100;
-            background: rgba(12,15,26,0.92);
-            backdrop-filter: blur(12px);
+            background: rgba(12,15,26,0.94);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border);
-            padding: 0 20px;
+            padding: 0 24px;
             display: flex; align-items: center; justify-content: space-between;
-            height: 56px;
+            height: 58px;
         }
         .topbar .logo {
-            font-size: 18px; font-weight: 700;
+            font-size: 18px; font-weight: 700; letter-spacing: 1px;
             background: linear-gradient(135deg, var(--accent-light), var(--accent2));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .topbar .nav { display: flex; gap: 8px; }
+        .topbar .nav { display: flex; gap: 4px; flex-wrap: wrap; }
         .topbar .nav a {
-            color: var(--muted); text-decoration: none; font-size: 13px; padding: 6px 12px;
-            border-radius: 6px; transition: 0.2s;
+            color: var(--muted); text-decoration: none; font-size: 12px; padding: 6px 10px;
+            border-radius: 6px; transition: all 0.2s; white-space: nowrap;
         }
         .topbar .nav a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
 
-        .container { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+        .container { max-width: 960px; margin: 0 auto; padding: 0 20px 20px; }
 
         /* Hero */
         .hero {
             text-align: center;
-            padding: 50px 0 36px;
+            padding: 48px 0 32px;
         }
-        .hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 6px; }
+        .hero h1 { font-size: 34px; font-weight: 700; margin-bottom: 8px; letter-spacing: 2px; }
         .hero h1 span {
-            background: linear-gradient(135deg, var(--accent-light), var(--accent2));
+            background: linear-gradient(135deg, var(--accent-light), var(--accent2), var(--accent3));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .hero .sub {
             color: var(--muted); font-size: 14px;
-            display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+            display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;
         }
-        .hero .sub .date-badge {
-            padding: 4px 14px; border-radius: 20px; font-size: 13px;
-            background: rgba(59,130,246,0.15); color: var(--accent-light);
+        .hero .sub .badge {
+            padding: 4px 16px; border-radius: 20px; font-size: 12px;
         }
-        .hero .sub .status-badge {
-            padding: 4px 14px; border-radius: 20px; font-size: 13px;
-            background: rgba(34,197,94,0.15); color: var(--green);
-        }
+        .hero .sub .date-badge { background: rgba(59,130,246,0.12); color: var(--accent-light); }
+        .hero .sub .status-badge { background: rgba(34,197,94,0.12); color: var(--green); }
 
-        /* Section Cards */
+        /* Quick Nav */
+        .quick-nav {
+            display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 16px 0 24px;
+        }
+        .quick-nav a {
+            padding: 8px 18px; border-radius: 24px; font-size: 13px; text-decoration: none;
+            background: var(--card); color: var(--muted); border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        .quick-nav a:hover { background: var(--card-hover); color: var(--text); border-color: var(--accent); }
+
+        /* Stats Row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 18px 16px;
+            text-align: center;
+            transition: all 0.25s;
+            position: relative; overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            opacity: 0; transition: 0.3s;
+        }
+        .stat-card:hover { border-color: rgba(59,130,246,0.3); transform: translateY(-2px); }
+        .stat-card:hover::before { opacity: 1; }
+        .stat-card .num { font-size: 26px; font-weight: 700; color: var(--accent-light); }
+        .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+        /* Sections */
         .section {
             background: var(--card);
-            border-radius: 16px;
-            padding: 24px;
+            border-radius: 18px;
+            padding: 24px 26px;
             margin-bottom: 20px;
             border: 1px solid var(--border);
-            transition: 0.2s;
+            transition: all 0.3s;
         }
-        .section:hover { border-color: rgba(59,130,246,0.3); }
-        .section-title {
+        .section:hover { border-color: rgba(59,130,246,0.2); }
+        .section-header {
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 16px; padding-bottom: 12px;
             border-bottom: 1px solid var(--border);
         }
-        .section-title .left { display: flex; align-items: center; gap: 10px; }
-        .section-title .left h2 { font-size: 17px; font-weight: 600; }
-        .section-title .tag {
+        .section-header .left { display: flex; align-items: center; gap: 10px; }
+        .section-header .left h2 { font-size: 17px; font-weight: 600; }
+        .section-header .meta { display: flex; align-items: center; gap: 8px; }
+        .section-header .tag {
             font-size: 11px; padding: 2px 10px; border-radius: 20px;
-            background: rgba(59,130,246,0.15); color: var(--accent-light);
-            white-space: nowrap;
+            background: rgba(59,130,246,0.12); color: var(--accent-light);
         }
 
-        /* News items */
+        /* Topic Tags */
+        .topic-tags {
+            display: flex; gap: 6px; flex-wrap: wrap; margin: -4px 0 16px;
+        }
+        .topic-tags span {
+            font-size: 11px; padding: 3px 12px; border-radius: 12px;
+            background: rgba(59,130,246,0.08); color: var(--accent-light);
+        }
+
+        /* News Items */
         .news-item {
             padding: 14px 0;
-            border-bottom: 1px solid rgba(42,48,69,0.5);
-            transition: 0.15s;
+            border-bottom: 1px solid rgba(42,48,69,0.4);
+            transition: all 0.2s;
             cursor: default;
         }
         .news-item:last-child { border-bottom: none; }
-        .news-item:hover { padding-left: 8px; }
+        .news-item:hover { padding-left: 10px; background: rgba(255,255,255,0.015); border-radius: 8px; padding-right: 10px; }
         .news-item .title {
             font-size: 15px; font-weight: 500;
-            margin-bottom: 4px;
-            display: flex; gap: 8px;
+            display: flex; gap: 10px; align-items: flex-start;
         }
-        .news-item .title .dot {
-            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-            background: var(--accent); margin-top: 10px; flex-shrink: 0;
+        .news-item .title .idx {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 20px; height: 20px; border-radius: 50%;
+            background: rgba(59,130,246,0.12); color: var(--accent-light);
+            font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 3px;
         }
-        .news-item .summary { font-size: 13px; color: var(--muted); margin-left: 14px; }
+        .news-item .summary { font-size: 13px; color: var(--muted); margin-left: 30px; margin-top: 3px; }
         .news-item .meta {
-            margin-top: 6px; margin-left: 14px;
-            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+            margin-top: 6px; margin-left: 30px;
+            display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         }
         .news-item .meta .source {
-            font-size: 11px; color: var(--muted);
-            background: rgba(255,255,255,0.04); padding: 2px 10px; border-radius: 10px;
+            font-size: 11px; color: var(--muted2);
+            background: rgba(255,255,255,0.03); padding: 2px 10px; border-radius: 10px;
         }
 
         /* Market Grid */
@@ -137,15 +190,15 @@
         }
         .market-item {
             background: rgba(12,15,26,0.5);
-            border-radius: 10px;
-            padding: 14px;
+            border-radius: 12px;
+            padding: 16px 14px;
             text-align: center;
             border: 1px solid transparent;
             transition: 0.2s;
         }
-        .market-item:hover { border-color: var(--border); }
+        .market-item:hover { border-color: var(--border); transform: translateY(-1px); }
         .market-item .name { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-        .market-item .value { font-size: 20px; font-weight: 700; margin: 2px 0; }
+        .market-item .value { font-size: 22px; font-weight: 700; margin: 2px 0; }
         .market-item .change { font-size: 13px; font-weight: 500; }
         .up { color: var(--red); }
         .down { color: var(--green); }
@@ -154,7 +207,7 @@
         /* FX Grid */
         .fx-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 10px;
             margin-top: 8px;
         }
@@ -165,109 +218,149 @@
             text-align: center;
         }
         .fx-item .pair { font-size: 13px; color: var(--muted); }
-        .fx-item .rate { font-size: 18px; font-weight: 600; margin: 2px 0; }
+        .fx-item .rate { font-size: 18px; font-weight: 600; margin: 2px 0; font-family: "SF Mono", "Fira Code", monospace; }
+        .fx-item .delta { font-size: 12px; }
 
-        /* Weather Widget */
-        .weather-widget {
-            display: flex; align-items: center; gap: 16px;
-            background: rgba(6,182,212,0.06);
-            border-radius: 10px;
-            padding: 14px 18px;
+        /* Weather & 3-day */
+        .weather-main {
+            display: flex; align-items: center; gap: 20px;
+            background: rgba(6,182,212,0.05);
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin-bottom: 16px;
+        }
+        .weather-main .icon-temp { display: flex; align-items: center; gap: 12px; }
+        .weather-main .city-label { font-weight: 600; font-size: 15px; }
+        .weather-main .big-temp { font-size: 36px; font-weight: 700; letter-spacing: -1px; }
+        .weather-main .desc { color: var(--muted); font-size: 13px; }
+
+        .weather-3day {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .weather-day {
+            background: rgba(12,15,26,0.5);
+            border-radius: 12px;
+            padding: 14px;
+            text-align: center;
+        }
+        .weather-day .day-name { font-size: 13px; font-weight: 600; }
+        .weather-day .day-icon { font-size: 22px; margin: 4px 0; }
+        .weather-day .day-temp { font-size: 15px; font-weight: 600; }
+        .weather-day .day-desc { font-size: 12px; color: var(--muted); }
+        .weather-day .day-wind { font-size: 11px; color: var(--muted2); margin-top: 4px; }
+
+        /* Commodity Grid */
+        .commodity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 8px;
             margin-top: 8px;
         }
-        .weather-widget .city { font-weight: 600; }
-        .weather-widget .temp { font-size: 24px; font-weight: 700; }
-        .weather-widget .desc { color: var(--muted); font-size: 13px; }
-
-        /* Stats row */
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        .stat-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
+        .commodity-item {
+            background: rgba(12,15,26,0.5);
+            border-radius: 10px;
+            padding: 12px;
             text-align: center;
         }
-        .stat-card .num { font-size: 24px; font-weight: 700; color: var(--accent-light); }
-        .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .commodity-item .name { font-size: 12px; color: var(--muted); }
+        .commodity-item .price { font-size: 16px; font-weight: 600; }
 
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--muted);
-            font-size: 13px;
-            border-top: 1px solid var(--border);
-            margin-top: 10px;
-        }
-        footer a { color: var(--accent-light); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
-
-        /* Substack style quote */
+        /* Highlight Box */
         .highlight-box {
             background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(167,139,250,0.06));
             border-left: 3px solid var(--accent);
-            border-radius: 0 8px 8px 0;
+            border-radius: 0 10px 10px 0;
             padding: 16px 20px;
             margin: 16px 0 0;
             font-size: 13px;
             color: var(--muted);
         }
 
-        /* Tags */
-        .topic-tags {
-            display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;
+        /* Quote of the day */
+        .quote-box {
+            background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(251,146,60,0.06));
+            border: 1px solid rgba(245,158,11,0.15);
+            border-radius: 12px;
+            padding: 16px 20px;
+            text-align: center;
         }
-        .topic-tags span {
-            font-size: 11px; padding: 3px 10px; border-radius: 12px;
-            background: rgba(59,130,246,0.1); color: var(--accent-light);
+        .quote-box .quote-text { font-size: 15px; font-style: italic; color: var(--gold); }
+        .quote-box .quote-author { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px 30px;
+            color: var(--muted2);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 10px;
         }
+        footer a { color: var(--accent-light); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
 
         @media (max-width: 600px) {
-            .container { padding: 12px; }
+            .container { padding: 0 12px 12px; }
             .hero h1 { font-size: 24px; }
-            .section { padding: 16px; border-radius: 12px; }
+            .section { padding: 16px; border-radius: 14px; }
             .market-grid { grid-template-columns: repeat(2,1fr); }
             .fx-grid { grid-template-columns: repeat(2,1fr); }
-            .topbar .nav a { font-size: 12px; padding: 4px 8px; }
+            .topbar { padding: 0 12px; }
+            .topbar .nav a { font-size: 11px; padding: 4px 6px; }
             .stats-row { grid-template-columns: repeat(2,1fr); }
+            .weather-3day { grid-template-columns: repeat(3,1fr); gap: 6px; }
+            .weather-main { flex-direction: column; text-align: center; }
+            .weather-main .icon-temp { justify-content: center; }
         }
     </style>
 </head>
 <body>
 
 <div class="topbar">
-    <div class="logo">每日早报</div>
+    <div class="logo">✦ 每日早报</div>
     <div class="nav">
-        <a href="#" onclick="scrollToSection('today')">今日</a>
+        <a href="#" onclick="scrollToSection('world')">国际</a>
+        <a href="#" onclick="scrollToSection('tech')">科技</a>
+        <a href="#" onclick="scrollToSection('china')">市场</a>
+        <a href="#" onclick="scrollToSection('life')">生活</a>
         <a href="#" onclick="scrollToSection('market')">行情</a>
+        <a href="#" onclick="scrollToSection('weather')">天气</a>
         <a href="https://github.com/Tffdbb/daily-news" target="_blank">GitHub</a>
     </div>
 </div>
 
 <div class="container">
+    <!-- HERO -->
     <div class="hero">
         <h1><span>每日全球资讯早报</span></h1>
         <div class="sub">
-            <span class="date-badge" id="currentDate">--</span>
-            <span class="status-badge">今日已更新</span>
+            <span class="badge date-badge" id="currentDate">--</span>
+            <span class="badge status-badge">✅ 今日已更新</span>
+        </div>
+        <div class="quick-nav">
+            <a href="#" onclick="scrollToSection('world')">🌍 国际</a>
+            <a href="#" onclick="scrollToSection('tech')">💻 科技</a>
+            <a href="#" onclick="scrollToSection('china')">🇨🇳 市场</a>
+            <a href="#" onclick="scrollToSection('life')">🌤️ 天气</a>
+            <a href="#" onclick="scrollToSection('market')">📊 行情</a>
         </div>
     </div>
 
-    <!-- Hot stats -->
+    <!-- HOT STATS -->
     <div class="stats-row" id="statsRow"></div>
 
+    <!-- NEWS CONTENT -->
     <div id="newsContent"></div>
 
+    <!-- FOOTER -->
     <footer>
-        <p>数据来源：财联社 · 36氪 · 新浪财经 · 央视新闻 · 新华社</p>
-        <p>每日 8:00 更新 · 由 <a href="https://github.com/Tffdbb/daily-news" target="_blank">OpenClaw AI</a> 驱动 · <span id="footerDate"></span></p>
-        <p style="margin-top:8px;font-size:11px;">反馈建议 · 联系作者</p>
+        <p>📡 数据来源：财联社 · 36氪 · 新浪财经 · 央视新闻 · 新华社 · wttr.in</p>
+        <p>⏰ 每日 8:00 (GMT+8) 自动更新 · 由 <a href="https://github.com/Tffdbb/daily-news" target="_blank">OpenClaw AI</a> 驱动</p>
+        <p style="margin-top:8px;font-size:11px;color:var(--muted2);">
+            <span id="footerDate"></span> · 公开 · 免费 · 无广告
+        </p>
     </footer>
 </div>
 
@@ -275,17 +368,17 @@
 const data = {
     date: "2026年5月2日 星期六",
     hotStats: [
-        { num: "2484万", label: "铁路单日旅客(历史新高)" },
-        { num: "+55.6%", label: "高速充电量同比" },
-        { num: "2303万", label: "充电量(千瓦时)" },
-        { num: "11718万", label: "累计发售车票" }
+        { num: "2484万", label: "铁路单日旅客 · 历史新高" },
+        { num: "+55.6%", label: "高速充电量同比增长" },
+        { num: "2303万", label: "充电量(kWh) · 单日新高" },
+        { num: "11718万", label: "累计发售五一车票" }
     ],
     sections: [
         {
             id: "world",
             title: "国际要闻",
             icon: "🌍",
-            tags: ["中东局势","中美关系","全球经济"],
+            tags: ["中东局势","中美关系","全球经济","制裁"],
             items: [
                 { t: "伊朗外长称仍愿同美国进行外交对话", s: "伊朗外交部长阿拉格齐表示，尽管局势紧张，伊朗仍愿通过对话解决分歧。", src: "财联社" },
                 { t: "古巴举行五一劳动节集会，50余万民众呼吁保卫祖国", s: "恰逢美国宣布加大制裁，古巴民众以大规模集会表达对国家主权的坚定捍卫。", src: "CCTV国际时讯" },
@@ -298,7 +391,7 @@ const data = {
             id: "tech",
             title: "科技动态",
             icon: "💻",
-            tags: ["AI","机器人","医药"],
+            tags: ["AI","巴菲特股东大会","新能源","国防AI"],
             items: [
                 { t: "伯克希尔股东大会即将召开，新CEO主导问答环节", s: "巴菲特仍以董事长身份出席，但问答环节由新任CEO格雷格·阿贝尔承担核心发言职责。", src: "36氪" },
                 { t: "我国首个算电协同绿电直供项目投运", s: "宁夏中卫50万千瓦光伏电站正式投运，实现从沙漠风光电到数字算力的直连直通。", src: "央视新闻" },
@@ -309,24 +402,13 @@ const data = {
             id: "china",
             title: "中国市场",
             icon: "🇨🇳",
-            tags: ["五一经济","新能源","私募调仓"],
+            tags: ["五一经济","新能源车","非洲零关税","私募调仓"],
             items: [
                 { t: "五一假期首日高速公路充电量同比增长55.6%", s: "充电量达2303万千瓦时，服务次数超94.63万次，均刷新历史记录。", src: "财联社" },
                 { t: "5月1日铁路发送旅客2484万人次创历史新高", s: "5月2日预计发送1970万人次，已累计发售五一车票11718万张。", src: "人民日报" },
                 { t: "上海迎来首票非洲20国零关税商品", s: "516吨埃及鲜橙通过海运入境，在上海外高桥港区海关通关放行。", src: "新华社" },
                 { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "新浪财经" },
                 { t: "百亿私募一季报调仓换股曝光", s: "高毅邓晓峰减持京东方A、TCL科技；冯柳减持海康威视加仓瑞丰新材。", src: "中国基金报" }
-        ]
-    },
-    {
-        id: "life",
-        title: "生活参考",
-        icon: "🌤️",
-        tags: ["泗阳天气","出行提示"],
-        items: [
-            { t: "泗阳今日：🌧️ 小雨 15°C", s: "东南风6km/h，湿度91%，体感偏凉。出门记得带伞。", src: "wttr.in" },
-            { t: "泗阳明天(5/3)：🌫️ 雾转🌦️ 阵雨 11~17°C", s: "早晨有雾，能见度低，下午有阵雨+风，注意出行安全。", src: "wttr.in" },
-            { t: "泗阳后天(5/4)：☀️ 晴 10~25°C", s: "大晴天！适合出游洗晒，温差大注意添衣。", src: "wttr.in" }
             ]
         },
         {
@@ -343,56 +425,88 @@ const data = {
                 { name: "标普500", value: "--", change: "休市", cls: "flat" }
             ],
             fx: [
-                { pair: "美元/人民币", rate: "7.24" },
-                { pair: "美元/日元", rate: "154.8" },
-                { pair: "欧元/美元", rate: "1.08" }
+                { pair: "美元/人民币", rate: "7.24", delta: "-0.02%" },
+                { pair: "美元/日元", rate: "154.80", delta: "+0.15%" },
+                { pair: "欧元/美元", rate: "1.0876", delta: "+0.08%" },
+                { pair: "英镑/美元", rate: "1.2599", delta: "-0.03%" }
+            ],
+            commodities: [
+                { name: "黄金(XAU)", price: "$2,345" },
+                { name: "原油(WTI)", price: "$73.2" },
+                { name: "比特币", price: "$64,210" }
+            ]
+        },
+        {
+            id: "life",
+            title: "生活参考 · 泗阳",
+            icon: "🌤️",
+            tags: ["五一出行","天气提醒"],
+            items: [
+                { t: "🌧️ 今日(5/2) 小雨 15°C", s: "东南风6km/h，湿度91%，体感偏凉。出门记得带伞。", src: "wttr.in" },
+                { t: "🌫️→🌦️ 明日(5/3) 雾转阵雨 11~17°C", s: "早晨有雾能见度低，下午有阵雨+风，注意出行安全。", src: "wttr.in" },
+                { t: "☀️ 后天(5/4) 大晴天 10~25°C", s: "适合出游洗晒！早晚温差大(10°C→25°C)，注意添衣。", src: "wttr.in" }
             ]
         }
     ],
-    weather: { city: "泗阳", temp: "15°C", desc: "🌧️ 小雨，出门带伞" }
+    weather: {
+        city: "泗阳",
+        current: { temp: "15°C", icon: "🌧️", desc: "小雨" },
+        forecast: [
+            { day: "今天 5/2", icon: "🌧️", temp: "14~17°C", desc: "小雨转阴", wind: "西南风6km/h" },
+            { day: "明天 5/3", icon: "🌫️", temp: "11~17°C", desc: "雾转阵雨", wind: "西风 26km/h" },
+            { day: "后天 5/4", icon: "☀️", temp: "10~25°C", desc: "晴", wind: "西南风 18km/h" }
+        ]
+    },
+    quote: {
+        text: "预测未来最好的方式就是创造它。",
+        author: "—— 彼得·德鲁克"
+    },
+    updateTime: "14:30"
 };
 
-// 日期
+// ===== Date =====
 const today = new Date();
 const beijing = new Date(today.getTime() + 8*3600000);
-const y = beijing.getUTCFullYear(), m = beijing.getUTCMonth()+1, d = beijing.getUTCDate();
+const y = beijing.getUTCFullYear(), mo = beijing.getUTCMonth()+1, d = beijing.getUTCDate();
 const weekdays = ["日","一","二","三","四","五","六"];
-document.getElementById("currentDate").textContent = y+"年"+m+"月"+d+"日 星期"+weekdays[beijing.getUTCDay()];
-document.getElementById("footerDate").textContent = "更新于 "+y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0")+" 14:30";
+document.getElementById("currentDate").textContent = y+"年"+mo+"月"+d+"日 星期"+weekdays[beijing.getUTCDay()];
+document.getElementById("footerDate").textContent = "更新于 " + y + "-" + String(mo).padStart(2,"0") + "-" + String(d).padStart(2,"0") + " " + data.updateTime;
 
-// Stats
-let statsHtml = "";
+// ===== Stats =====
+let statsH = "";
 for (const s of data.hotStats) {
-    statsHtml += '<div class="stat-card"><div class="num">'+s.num+'</div><div class="label">'+s.label+'</div></div>';
+    statsH += '<div class="stat-card"><div class="num">'+s.num+'</div><div class="label">'+s.label+'</div></div>';
 }
-document.getElementById("statsRow").innerHTML = statsHtml;
+document.getElementById("statsRow").innerHTML = statsH;
 
-// Sections
+// ===== Sections =====
 let html = "";
 for (let si = 0; si < data.sections.length; si++) {
     const sec = data.sections[si];
     html += '<div class="section" id="sec-'+sec.id+'">';
-    html += '<div class="section-title"><div class="left"><span>'+sec.icon+'</span><h2>'+sec.title+'</h2></div><span class="tag">'+(sec.items ? sec.items.length+'条' : '')+'</span></div>';
-    
-    // Tags
+    html += '<div class="section-header"><div class="left"><span style="font-size:20px;">'+sec.icon+'</span><h2>'+sec.title+'</h2></div><div class="meta"><span class="tag">'+(sec.items ? sec.items.length+'条' : '')+'</span></div></div>';
+
     if (sec.tags) {
         html += '<div class="topic-tags">';
         for (const tag of sec.tags) html += '<span>#'+tag+'</span>';
         html += '</div>';
     }
-    
+
     if (sec.note) html += '<p style="color:var(--muted);font-size:13px;margin-bottom:12px;">'+sec.note+'</p>';
-    
+
+    // News items
     if (sec.items) {
-        for (const item of sec.items) {
+        for (let i = 0; i < sec.items.length; i++) {
+            const item = sec.items[i];
             html += '<div class="news-item">';
-            html += '<div class="title"><span class="dot"></span>'+item.t+'</div>';
+            html += '<div class="title"><span class="idx">'+(i+1)+'</span>'+item.t+'</div>';
             html += '<div class="summary">'+item.s+'</div>';
-            html += '<div class="meta"><span class="source">'+item.src+'</span></div>';
+            html += '<div class="meta"><span class="source">📌 '+item.src+'</span></div>';
             html += '</div>';
         }
     }
-    
+
+    // Markets
     if (sec.markets) {
         html += '<div class="market-grid">';
         for (const m of sec.markets) {
@@ -400,26 +514,50 @@ for (let si = 0; si < data.sections.length; si++) {
         }
         html += '</div>';
     }
-    
+
+    // FX
     if (sec.fx) {
-        html += '<div style="margin-top:14px;"><p style="font-size:13px;color:var(--muted);margin-bottom:8px;">💱 主要汇率</p><div class="fx-grid">';
+        html += '<div style="margin-top:16px;"><p style="font-size:13px;color:var(--muted);margin-bottom:8px;">💱 外汇汇率</p><div class="fx-grid">';
         for (const f of sec.fx) {
-            html += '<div class="fx-item"><div class="pair">'+f.pair+'</div><div class="rate">'+f.rate+'</div></div>';
+            const dCls = f.delta.startsWith("+") ? "up" : (f.delta.startsWith("-") ? "down" : "flat");
+            html += '<div class="fx-item"><div class="pair">'+f.pair+'</div><div class="rate">'+f.rate+'</div><div class="delta '+dCls+'">'+f.delta+'</div></div>';
         }
         html += '</div></div>';
     }
-    
+
+    // Commodities
+    if (sec.commodities) {
+        html += '<div style="margin-top:16px;"><p style="font-size:13px;color:var(--muted);margin-bottom:8px;">🏆 大宗商品 & 加密资产</p><div class="commodity-grid">';
+        for (const c of sec.commodities) {
+            html += '<div class="commodity-item"><div class="name">'+c.name+'</div><div class="price">'+c.price+'</div></div>';
+        }
+        html += '</div></div>';
+    }
+
     html += '</div>';
 }
 
-// Weather widget (attach to last section)
-html += '<div class="section"><div class="section-title"><div class="left"><span>🌤️</span><h2>今日天气</h2></div></div>';
-html += '<div class="weather-widget"><div><div class="city">'+data.weather.city+'</div><div class="desc">'+data.weather.desc+'</div></div><div class="temp">'+data.weather.temp+'</div></div>';
-html += '<div class="highlight-box">💡 五一假期出行高峰，泗阳今日有小雨，出门记得带伞。后天(5/4)大晴天，适合出游！</div>';
+// ===== Weather Section (separate) =====
+const w = data.weather;
+html += '<div class="section" id="sec-weather"><div class="section-header"><div class="left"><span style="font-size:20px;">🌤️</span><h2>天气预报 · '+w.city+'</h2></div></div>';
+html += '<div class="weather-main">';
+html += '<div class="icon-temp"><span style="font-size:48px;">'+w.current.icon+'</span><span class="big-temp">'+w.current.temp+'</span></div>';
+html += '<div><div class="city-label">'+w.city+' · '+w.current.desc+'</div><div class="desc">'+data.sections.find(s=>s.id==="life").items[0].s+'</div></div>';
 html += '</div>';
+html += '<div class="weather-3day">';
+for (const f of w.forecast) {
+    html += '<div class="weather-day"><div class="day-name">'+f.day+'</div><div class="day-icon">'+f.icon+'</div><div class="day-temp">'+f.temp+'</div><div class="day-desc">'+f.desc+'</div><div class="day-wind">'+f.wind+'</div></div>';
+}
+html += '</div>';
+html += '<div class="highlight-box">💡 五一假期出行高峰，泗阳今天有小雨记得带伞。后天(5/4)大晴天最高25°C，适合出游！</div>';
+html += '</div>';
+
+// ===== Quote =====
+html += '<div class="section"><div class="quote-box"><div class="quote-text">"'+data.quote.text+'"</div><div class="quote-author">'+data.quote.author+'</div></div></div>';
 
 document.getElementById("newsContent").innerHTML = html;
 
+// ===== Scroll =====
 function scrollToSection(id) {
     const el = document.getElementById('sec-'+id);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
