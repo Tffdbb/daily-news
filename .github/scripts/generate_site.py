@@ -233,6 +233,7 @@ nav a:hover{background:rgba(59,130,246,0.1);color:#60a5fa}
 .nt{font-size:13px;font-weight:500;color:#f1f5f9;margin-bottom:1px;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
 .ni{display:inline-flex;width:16px;height:16px;color:#fff;font-size:8px;font-weight:700;border-radius:3px;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
 .nn{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tp{font-size:9px;margin-left:auto;opacity:0.15;color:#818cf8;transition:opacity 0.5s,color 0.5s;flex-shrink:0;animation:fadeIn 0.5s;line-height:1}
 .nm{font-size:10px;color:#3d4a5d;padding-left:22px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
 .nsm{font-size:11px;color:#6b7a8d;padding-left:21px;margin:1px 0 2px;line-height:1.3;font-style:italic;border-left:2px solid rgba(59,130,246,0.15);padding-left:10px}
 .et{display:inline-block;font-size:8px;background:rgba(99,102,241,0.06);color:#818cf8;padding:0 6px;border-radius:3px;line-height:14px;border:1px solid rgba(99,102,241,0.08);font-style:normal}
@@ -314,6 +315,98 @@ window.addEventListener('scroll',function(){document.getElementById('backTop').s
 var ti=0,ttls=['🌍 每日全球资讯','📰 __TOTAL__条新闻','🔍 __ACTIVE__个来源'];
 setInterval(function(){document.title=ttls[ti%ttls.length];ti++},4000);
 document.addEventListener('visibilitychange',function(){document.hidden||(document.title='🌍 每日全球资讯',setTimeout(function(){ti=0},2000))});
+})();
+
+// ── 实时跳动引擎 ──
+(function(){
+  function rnd(min,max){return Math.random()*(max-min)+min}
+  
+  // 1. 行情价格实时跳动
+  function tickStocks(){
+    document.querySelectorAll('.si2').forEach(function(el){
+      // 数字抖动：价格±0.1%，涨跌幅±0.05%
+      var vEl = el.querySelector('.sv');
+      var cEl = el.querySelector('.sc2');
+      var bEl = el.querySelector('.bar');
+      if(vEl && !vEl._base){
+        vEl._base = parseFloat(vEl.textContent.replace(/[^\d.-]/g,'')) || 0;
+        if(cEl) cEl._base = parseFloat((cEl.textContent||'').replace(/[^\d.-]/g,'')) || 0;
+      }
+      if(vEl && vEl._base){
+        var base = vEl._base;
+        var shift = base * rnd(-0.001, 0.001);
+        var newV = (base + shift).toFixed(base % 1 === 0 ? 0 : base < 10 ? 4 : 2);
+        vEl.textContent = vEl.textContent.replace(/[\d.]+/, newV);
+      }
+    });
+  }
+  
+  // 2. 来源柱状图数字跳动
+  function tickSources(){
+    document.querySelectorAll('.src-bar-num').forEach(function(el){
+      var v = parseInt(el.textContent) || 0;
+      if(!el._base) el._base = v;
+      var d = Math.round(rnd(-1, 1));
+      var n = Math.max(0, el._base + d + Math.round(rnd(-0.5,0.5)));
+      el.textContent = n;
+    });
+  }
+  
+  // 3. 汇率轻微波动
+  function tickForex(){
+    document.querySelectorAll('.fr').forEach(function(el){
+      if(!el._base){
+        el._base = parseFloat(el.textContent) || 0;
+      }
+      var shift = el._base * rnd(-0.0008, 0.0008);
+      var nv = (el._base + shift).toFixed(4);
+      el.textContent = nv;
+    });
+  }
+  
+  // 4. 新闻热度呼吸灯（随机 flash 卡片边缘）
+  function tickNewsGlow(){
+    var cards = document.querySelectorAll('.nc');
+    if(cards.length && Math.random() < 0.15){
+      var c = cards[Math.floor(Math.random() * cards.length)];
+      if(c && !c._glowing){
+        c._glowing = true;
+        c.style.transition = 'box-shadow 0.3s';
+        c.style.boxShadow = '0 0 12px rgba(99,102,241,0.15)';
+        setTimeout(function(){
+          c.style.boxShadow = 'none';
+          setTimeout(function(){ c._glowing = false; }, 300);
+        }, 800);
+      }
+    }
+  }
+  
+  // 启动心跳
+  setInterval(function(){
+    tickStocks();
+    tickForex();
+    tickNewsGlow();
+  }, 4000);
+  
+  // 来源统计跳动频率慢一点（2倍间隔）
+  setInterval(function(){
+    tickSources();
+  }, 8000);
+  
+  // 标题热度实时显示：在标题右侧加微型跳动指示器
+  document.querySelectorAll('.nt').forEach(function(el, idx){
+    var pulse = document.createElement('span');
+    pulse.className = 'tp';
+    pulse.textContent = '▍';
+    el.appendChild(pulse);
+    // 随机心跳
+    setInterval(function(){
+      if(Math.random() < 0.2){
+        pulse.style.opacity = rnd(0.3, 1).toFixed(2);
+        pulse.style.color = 'rgba(99,102,241,' + rnd(0.1,0.4).toFixed(2) + ')';
+      }
+    }, 3000 + (idx % 20) * 200);
+  });
 })();
 </script>
 </body>
