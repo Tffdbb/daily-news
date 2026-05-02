@@ -33,7 +33,8 @@ jobs:
         run: python3 .github/scripts/fetch_news.py
 
       - name: Python page builder
-        run: cd .github/scripts && python3 generate_site.py && mv index.html ../../ && cd ../../
+        working-directory: ./
+        run: python3 .github/scripts/generate_site.py
 
       - name: Create .nojekyll
         run: touch .nojekyll
