@@ -55,6 +55,41 @@ def get_importance(title):
     sc = sum(1 for k in hk if k in title)
     return ('🔥 重磅' if sc >= 2 else '⚡ 关注' if sc >= 1 else None)
 
+def guess_summary(title):
+    """从标题自然语言提取一句话精要"""
+    t = title.strip()
+    if len(t) <= 20:
+        return ''
+    prefix_removed = re.sub(r'^(快讯|消息|独家|重磅|突发|最新|实录|公告|解读|评论|周报|早报|晚报|早知道|盘前|盘中|盘后|收评|午评|早盘)：?\s*', '', t)
+    nums = re.findall(r'[\d,.]+%?|千亿|万亿|亿|万', prefix_removed[:30])
+    entities = re.findall(r'^[\u4e00-\u9fff]{2,4}', prefix_removed)
+    verbs = re.findall(r'(宣布|发布|启动|推出|达成|签署|裁定|通过|批准|否决|调查|起诉|警告|制裁|呼吁|称|表示|指出|强调|要求|禁止|限制)', prefix_removed)
+    parts = []
+    if entities and len(entities[0]) >= 2:
+        parts.append(entities[0])
+    if nums:
+        parts.append(' '.join(nums[:2]))
+    if verbs:
+        parts.append(verbs[0].replace('称','').replace('表示','').replace('指出','') or '')
+    s = ' · '.join(p for p in parts if p)[:40]
+    return s
+
+def extract_entities(title):
+    """从标题提取实体标签：公司/国家/人名/概念"""
+    entities = []
+    # 知名公司/组织
+    companies = ['苹果','华为','微软','谷歌','Meta','特斯拉','阿里','腾讯','字节','百度','亚马逊','台积电','三星','小米','比亚迪','美团','京东','拼多多','宁德时代','中芯','OPPO','vivo','蔚来','小鹏','理想','OpenAI','SpaceX','英伟达','AMD','英特尔','高通','联邦','NASA','欧佩克','OPEC','IMF','世行']
+    countries = ['中国','美国','俄罗斯','欧盟','英国','日本','德国','法国','印度','巴西','韩国','澳大利亚','以色列','伊朗','乌克兰','沙特','土耳其']
+    # 提取
+    for co in companies:
+        if co in title: entities.append(co)
+    for ct in countries:
+        if ct in title: entities.append(ct)
+    # 提取数字相关（百分比、金额等）
+    money = re.findall(r'[千万亿]?[美欧日]?[元美元欧元日圆]|[\d,.]+亿|\d+[万亿]', title)
+    if money: entities.append(money[0][:8])
+    return list(set(entities))[:3]
+
 def calc_hot_score(item, all_items):
     t = item['t']
     sc = 10 + (2 if len(t)<20 else 0) + (3 if re.search(r'\d',t) else 0) + (5 if '！' in t or '!' in t else 0)
@@ -155,7 +190,11 @@ for cat in cat_order:
     for i,item in enumerate(items):
         imp = get_importance(item['t'])
         tag = f'<span class="imp {imp.split()[0]}" style="display:{"inline" if imp else "none"}">{imp.split()[0]}</span>' if imp else ''
-        hi += f'<div class="nc" onclick="window.open(\'{item["u"]}\',\'_blank\')"><div class="nt"><span class="ni" style="background:{bg}">{i+1}</span>{tag}<span class="nn">{escape(item["t"])}</span></div><div class="nm"><span class="ns" style="color:{bg}">●</span> {escape(item["src"])}</div></div>\n'
+                sm = guess_summary(escape(item['t']))
+        sm_html = f'<div class="nsm">{sm}</div>' if sm else ''
+        ent = extract_entities(item['t'])
+        ent_html = ''.join(f'<span class="et">{escape(e)}</span>' for e in ent) if ent else ''
+        hi += f'<div class="nc" onclick="window.open(\'{item["u"]}\',\'_blank\')"><div class="nt"><span class="ni" style="background:{bg}">{i+1}</span>{tag}<span class="nn">{escape(item["t"])}</span></div>{sm_html}<div class="nm"><span class="ns" style="color:{bg}">●</span> {escape(item["src"])} {ent_html}</div></div>\n'
     news_html += f'<div class="se" id="cat-{cid}"><div class="sh"><span class="si">{icon}</span><span class="st">{cat}</span><span class="sc">{len(items)}</span></div>{hi}</div>\n'
 
 # ── HTML 模板（用简单 replace 替换） ──
@@ -194,7 +233,10 @@ nav a:hover{background:rgba(59,130,246,0.1);color:#60a5fa}
 .nt{font-size:13px;font-weight:500;color:#f1f5f9;margin-bottom:1px;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
 .ni{display:inline-flex;width:16px;height:16px;color:#fff;font-size:8px;font-weight:700;border-radius:3px;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
 .nn{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.nm{font-size:10px;color:#3d4a5d;padding-left:22px;display:flex;align-items:center;gap:4px}.ns{font-size:7px;margin-right:1px}
+.nm{font-size:10px;color:#3d4a5d;padding-left:22px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.nsm{font-size:11px;color:#6b7a8d;padding-left:21px;margin:1px 0 2px;line-height:1.3;font-style:italic;border-left:2px solid rgba(59,130,246,0.15);padding-left:10px}
+.et{display:inline-block;font-size:8px;background:rgba(99,102,241,0.06);color:#818cf8;padding:0 6px;border-radius:3px;line-height:14px;border:1px solid rgba(99,102,241,0.08);font-style:normal}
+.ns{font-size:7px;margin-right:1px}
 .hot-grid{display:flex;flex-direction:column;gap:3px}
 .hc{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:8px;cursor:pointer;transition:all .15s;background:rgba(255,255,255,0.008);border-left:2px solid rgba(239,68,68,0.3)}
 .hc:hover{background:rgba(239,68,68,0.04);transform:translateX(2px)}
