@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日全球资讯早报</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #3b82f6;
+            --accent-light: #60a5fa;
+            --text: #f1f5f9;
+            --muted: #94a3b8;
+            --border: #334155;
+            --green: #22c55e;
+            --red: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.7;
+            min-height: 100vh;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        header { text-align: center; padding: 40px 0 30px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
+        header h1 {
+            font-size: 28px; font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-light), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        header .date { color: var(--muted); font-size: 14px; margin-top: 8px; }
+        header .status {
+            display: inline-block; margin-top: 12px; padding: 4px 14px; border-radius: 20px; font-size: 13px;
+            background: rgba(34,197,94,0.15); color: var(--green);
+        }
+        .section { background: var(--card); border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid var(--border); }
+        .section-title {
+            font-size: 18px; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px;
+            border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
+        }
+        .section-title .tag {
+            font-size: 12px; padding: 2px 10px; border-radius: 12px;
+            background: rgba(59,130,246,0.2); color: var(--accent-light);
+        }
+        .news-item { padding: 12px 0; border-bottom: 1px solid rgba(51,65,85,0.5); }
+        .news-item:last-child { border-bottom: none; }
+        .news-item .title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+        .news-item .summary { font-size: 13px; color: var(--muted); }
+        .news-item .source { font-size: 11px; color: var(--muted); margin-top: 4px; display: inline-block; }
+        .market-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 12px; margin-top: 8px; }
+        .market-item { background: rgba(15,23,42,0.5); border-radius: 8px; padding: 12px 14px; text-align: center; }
+        .market-item .name { font-size: 12px; color: var(--muted); }
+        .market-item .value { font-size: 18px; font-weight: 600; margin: 4px 0; }
+        .market-item .change { font-size: 13px; }
+        .up { color: var(--red); }
+        .down { color: var(--green); }
+        footer { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
+        @media (max-width:600px) {
+            .container { padding: 12px; }
+            .section { padding: 16px; }
+            header h1 { font-size: 22px; }
+            .market-grid { grid-template-columns: repeat(2,1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>每日全球资讯早报</h1>
+        <div class="date" id="currentDate">加载中...</div>
+        <div class="status">今日已更新</div>
+    </header>
+    <div id="newsContent"></div>
+    <footer>
+        <p>数据来源：财联社、36氪、新浪财经、央视新闻</p>
+        <p>每日 8:00 自动更新 | 由 OpenClaw AI 驱动</p>
+    </footer>
+</div>
+
+<script>
+const data = {
+    date: "2026年5月2日 星期六",
+    sections: [
+        {
+            title: "国际要闻",
+            icon: "\uD83C\uDF0D",
+            items: [
+                { t: "伊朗外长称仍愿同美国进行外交对话", s: "伊朗外交部长阿拉格齐表示，尽管局势紧张，伊朗仍愿通过对话解决分歧。", src: "\u8D22\u8054\u793E" },
+                { t: "古巴举行五一劳动节集会，50余万民众呼吁保卫祖国", s: "恰逢美国宣布加大制裁，古巴民众以大规模集会表达对国家主权的坚定捍卫。", src: "CCTV\u56FD\u9645\u65F6\u8BAF" },
+                { t: "特朗普称美国已出售1亿桶委内瑞拉石油，计划翻倍", s: "这些石油被运往得克萨斯州进行加工，计划在未来一个月内将数量翻倍。", src: "\u4E2D\u56FD\u65B0\u95FB\u7F51" },
+                { t: "日本央行前行长黑田东彦：2%通胀目标已实现", s: "黑田东彦表示日本不需要财政扩张或货币宽松，央行暂不加息是正确的决定。", src: "\u8D22\u8054\u793E" },
+                { t: "特朗普扩大对古巴制裁，派航母赴古巴海岸", s: "5月1日签署行政命令，将林肯号航母部署至古巴海岸。", src: "\u592E\u89C6\u65B0\u95FB" }
+            ]
+        },
+        {
+            title: "科技动态",
+            icon: "\uD83D\uDCBB",
+            items: [
+                { t: "伯克希尔股东大会即将召开，新CEO主导问答环节", s: "巴菲特仍以董事长身份出席，但问答环节由新CEO格雷格阿贝尔承担核心发言职责。", src: "36\u6C2A" },
+                { t: "我国首个算电协同绿电直供项目投运", s: "宁夏中卫50万千瓦光伏电站正式投运，实现从沙漠风光电到数字算力的直连直通。", src: "\u592E\u89C6\u65B0\u95FB" },
+                { t: "五角大楼与七家AI巨头签约", s: "包括SpaceX、OpenAI、谷歌、英伟达等，将AI部署至国防部机密网络。", src: "36\u6C2A" }
+            ]
+        },
+        {
+            title: "中国市场",
+            icon: "\uD83C\uDDE8\uD83C\uDDF3",
+            items: [
+                { t: "五一假期首日高速公路充电量同比增长55.6%", s: "充电量达2303万千瓦时，服务次数超94.63万次，刷新历史记录。", src: "\u8D22\u8054\u793E" },
+                { t: "5月1日铁路发送旅客2484万人次创历史新高", s: "5月2日预计发送1970万人次，已累计发售五一车票11718万张。", src: "\u4EBA\u6C11\u65E5\u62A5" },
+                { t: "上海迎来首票非洲20国零关税商品", s: "516吨埃及鲜橙通过海运入境，在上海外高桥港区海关通关放行。", src: "\u65B0\u534E\u793E" },
+                { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "\u65B0\u6D6A\u8D22\u7ECF" },
+                { t: "百亿私募一季报调仓换股曝光", s: "高毅邓晓峰减持京东方A、TCL科技；冯柳减持海康威视加仓瑞丰新材。", src: "\u4E2D\u56FD\u57FA\u91D1\u62A5" }
+            ]
+        },
+        {
+            title: "市场行情",
+            icon: "\uD83D\uDCCA",
+            note: "今日为周末，全球主要金融市场休市",
+            markets: [
+                ["沪指","3304","+0.2%"], ["深指","10786","-0.1%"], ["恒指","18235","-0.4%"],
+                ["美元/人民币","7.24","--"], ["美元/日元","154.8","--"]
+            ]
+        }
+    ]
+};
+
+const today = new Date();
+const beijing = new Date(today.getTime() + 8*3600000);
+const y = beijing.getUTCFullYear(), m = beijing.getUTCMonth()+1, d = beijing.getUTCDate();
+const weekdays = ["日","一","二","三","四","五","六"];
+document.getElementById("currentDate").textContent =
+    y+"年"+m+"月"+d+"日 星期"+weekdays[beijing.getUTCDay()];
+
+let html = "";
+for (const sec of data.sections) {
+    html += '<div class="section"><div class="section-title">'+sec.icon+" "+sec.title;
+    if (sec.items) html += ' <span class="tag">'+sec.items.length+"条</span>";
+    html += "</div>";
+    if (sec.note) html += '<p style="color:var(--muted);font-size:13px;margin-bottom:12px;">'+sec.note+"</p>";
+    if (sec.items) {
+        for (const item of sec.items) {
+            html += '<div class="news-item"><div class="title">'+item.t+'</div><div class="summary">'+item.s+'</div><div class="source">\u6765\u6E90\uFF1A'+item.src+"</div></div>";
+        }
+    }
+    if (sec.markets) {
+        html += '<div class="market-grid">';
+        for (const m of sec.markets) {
+            let cls = "flat";
+            if (m[2].startsWith("+")) cls = "up";
+            else if (m[2].startsWith("-")) cls = "down";
+            html += '<div class="market-item"><div class="name">'+m[0]+'</div><div class="value">'+m[1]+'</div><div class="change '+cls+'">'+m[2]+"</div></div>";
+        }
+        html += "</div>";
+    }
+    html += "</div>";
+}
+document.getElementById("newsContent").innerHTML = html;
+</script>
+</body>
+</html>
