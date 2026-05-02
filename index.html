@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>每日全球资讯早报 · Tffdbb</title>
-    <!-- v=1777710277142 -->
     <meta name="description" content="每日全球资讯早报 - 实时行情、全球股市、汇率、天气">
     <style>
         :root {
@@ -314,6 +313,8 @@ function render() {
     }
 
     // 2. Market Section — static fallback + background live update
+    // 2. Market Section
+    const w = data.weather;
     html += '<div class="section" id="sec-market"><div class="section-header"><div class="left"><span style="font-size:18px;">📊</span><h2>全球股市 <span class="tag" style="background:rgba(34,197,94,0.12);color:var(--green);font-size:10px;">今日已更新</span></h2></div></div><div class="market-grid" id="marketGrid">'+
       '<div class="market-item"><div class="name">沪指</div><div class="value">3304</div><div class="change up">+0.2%</div></div>'+
       '<div class="market-item"><div class="name">深指</div><div class="value">10786</div><div class="change down">-0.1%</div></div>'+
@@ -323,12 +324,15 @@ function render() {
       '<div class="market-item"><div class="name">标普500</div><div class="value">--</div><div class="change flat">周末休市</div></div>'+
     '</div></div>';
 
-    // 3. Crypto — static fallback + background refresh
-    html += '<div class="weather-3day">';
+    // 3. Weather
+    html += '<div class="section" id="sec-weather"><div class="section-header"><div class="left"><span style="font-size:18px;">🌤️</span><h2>泗阳天气 · 三日预报</h2></div></div><div class="weather-3day">';
     for (const f of w.forecast) html += '<div class="weather-day"><div class="day-name">'+f.day+'</div><div class="day-icon">'+f.icon+'</div><div class="day-temp">'+f.temp+'</div><div class="day-desc">'+f.desc+'</div></div>';
-    html += '</div><div class="highlight-box">💡 泗阳今天有小雨带伞，后天(5/4)大��天最高25°C适合出游</div></div>';
+    html += '</div><div class="highlight-box">💡 泗阳今天有小雨记得带伞，后天(5/4)大晴天最高25°C适合出游</div></div>';
 
-    // 6. Quote
+    // 4. Forex
+    html += '<div class="section" id="sec-forex"><div class="section-header"><div class="left"><span style="font-size:18px;">💱</span><h2>外汇汇率 · 实时 <span class="tag" style="background:rgba(6,182,212,0.12);color:var(--cyan);font-size:10px;">自动刷新</span></h2></div><span class="refresh-btn" onclick="loadForex()">🔄</span></div><div class="fx-grid" id="fxGrid"></div></div>';
+
+    // 5. Quote
     html += '<div class="section"><div class="quote-box"><div class="quote-text">"'+data.quote.text+'"</div><div class="quote-author">'+data.quote.author+'</div></div></div>';
 
     document.getElementById("newsContent").innerHTML = html;
