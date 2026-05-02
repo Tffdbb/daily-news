@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import json, re, urllib.request, ssl, datetime, socket
+import json, re, urllib.request, ssl, datetime, socket, concurrent.futures
 
 socket.setdefaulttimeout(10)
 TIMEOUT = 10
@@ -8,9 +8,15 @@ HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/
 CTX = ssl.create_default_context()
 CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 
+def _do_fetch(url):
+    r = urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=TIMEOUT, context=CTX)
+    return r.read().decode('utf-8','replace')
+
 def f(url):
-    try: r = urllib.request.urlopen(urllib.request.Request(url, headers=HEADERS), timeout=TIMEOUT, context=CTX); return r.read().decode('utf-8','replace')
-    except: return ''
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+        fut = ex.submit(_do_fetch, url)
+        try: return fut.result(timeout=8)
+        except: return ''
 
 def pat(html, p, mn=6, mx=5):
     s=set();items=[];m=re.finditer(p,html)
