@@ -15,65 +15,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  collect-news:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Collect main news (36 domestic sources)
-        run: timeout 150 python3 .github/scripts/fetch_news.py || echo 'WARN: main collector timed out'
-      - name: Upload news artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: news_data
-          path: news_data.json
-          retention-days: 1
-          if-no-files-found: warn
-
-  collect-rss:
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Collect RSS international sources
-        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'WARN: RSS collector failed'
-      - name: Upload rss artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rss_data
-          path: rss_news.json
-          retention-days: 1
-          if-no-files-found: warn
-
-  collect-more:
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    permissions:
-      contents: read
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Collect vertical sources
-        run: timeout 120 python3 .github/scripts/fetch_more.py || echo 'WARN: vertical collector failed'
-      - name: Upload more artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: more_data
-          path: more_news.json
-          retention-days: 1
-          if-no-files-found: warn
-
-  # ─── 合并+发布 ───
-  merge-and-deploy:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [collect-news, collect-rss, collect-more]
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -83,18 +27,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./
+      - name: Collect main news
+        run: timeout 120 python3 .github/scripts/fetch_news.py || echo 'WARN: main collector failed'
 
-      - name: Move artifacts to root
-        run: |
-          ls -la */ || true
-          [ -f news_data/news_data.json ] && cp news_data/news_data.json news_data.json 2>/dev/null || true
-          [ -f rss_data/rss_news.json ] && cp rss_data/rss_news.json rss_news.json 2>/dev/null || true
-          [ -f more_data/more_news.json ] && cp more_data/more_news.json more_news.json 2>/dev/null || true
-          ls -la *.json 2>/dev/null || echo 'No json files'
+      - name: Collect RSS
+        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'WARN: RSS collector failed'
+
+      - name: Collect vertical
+        run: timeout 120 python3 .github/scripts/fetch_more.py || echo 'WARN: vertical collector failed'
 
       - name: Merge news data
         run: python3 .github/scripts/merge_news.py
@@ -106,7 +46,7 @@ jobs:
       - name: Create .nojekyll
         run: touch .nojekyll
 
-      - name: Upload pages artifact
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
