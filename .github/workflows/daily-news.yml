@@ -32,8 +32,8 @@ jobs:
       - name: Python news collector
         run: python3 .github/scripts/fetch_news.py
 
-      - name: Node page builder
-        run: node .github/scripts/generate_site_gh.js
+      - name: Python page builder
+        run: cd .github/scripts && python3 generate_site.py && mv index.html ../../ && cd ../../
 
       - name: Create .nojekyll
         run: touch .nojekyll
