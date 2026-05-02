@@ -76,14 +76,22 @@ for c in ['finance','macro']:
         keys = extract_keys(t)
         rscore = 0
         for k in keys:
-            if k in resonance:
+            if k in resonance and isinstance(resonance[k], list):
                 rscore += len(resonance[k])
         item['_rscore'] = rscore
         all_hl_candidates.append(item)
 
-# 按共振分排序
+# 按共振分排序，同一源最多2条
 all_hl_candidates.sort(key=lambda x: -x.get('_rscore', 0))
-headlines = all_hl_candidates[:6]
+headlines = []
+src_seen = {}
+for item in all_hl_candidates:
+    src = item.get('src','')
+    cnt = src_seen.get(src, 0)
+    if cnt >= 2: continue
+    src_seen[src] = cnt + 1
+    headlines.append(item)
+    if len(headlines) >= 6: break
 
 # 股票（本地模拟，实际从API取）
 stks = [

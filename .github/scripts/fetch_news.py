@@ -218,22 +218,20 @@ def main():
     for n in all_items:
         n['_key'] = extract_keys(n.get('t',''))
     
-    # 计算每个事件的共振次数（多少个不同来源报同一组关键词）
+    # === 事件共振引擎V2：每个源对同一关键词只计1次 ===
     from collections import defaultdict
-    resonance = defaultdict(lambda:{'sources':set(),'cats':set(),'count':0})
+    # 先收集：key -> {src1, src2, ...}
+    key_srcs = defaultdict(set)
     for n in all_items:
         k = n['_key']
         if k and len(k) > 2:
-            resonance[k]['sources'].add(n.get('src',''))
-            resonance[k]['cats'].add(n.get('cat',''))
-            resonance[k]['count'] += 1
+            key_srcs[k].add(n.get('src',''))
     
     # 给每条新闻加上共振分
     for n in all_items:
         k = n['_key']
-        r = resonance.get(k, {})
-        src_count = len(r.get('sources', set()))
-        n['_resonance'] = src_count  # 同一事件出现在多少不同来源
+        src_count = len(key_srcs.get(k, set()))
+        n['_resonance'] = src_count
     
     # 去重
     seen=set();news=[]
@@ -265,15 +263,12 @@ def main():
     
     # 输出共振统计
     print(f'\n🔊 事件共振（跨源影响力前10）:')
-    top_events = sorted(resonance.items(), key=lambda x:-len(x[1]['sources']))[:10]
+    top_events = sorted(key_srcs.items(), key=lambda x:-len(x[1]))[:15]
     for k,v in top_events:
-        print(f'  [{len(v["sources"])}源] {k}')
-    
-    stks = []
-    fx = {}
+        print(f'  [{len(v)}源] {k}')
     
     with open('news_data.json','w',encoding='utf-8') as f:
-        json.dump({'news':news,'groups':grouped,'resonance':{k:list(v['sources']) for k,v in top_events}},f,ensure_ascii=False)
+        json.dump({'news':news,'groups':grouped,'resonance':{k:list(v) for k,v in top_events}},f,ensure_ascii=False)
     
     for k,v in grouped.items():
         print(f'  {k}: {len(v)}')
