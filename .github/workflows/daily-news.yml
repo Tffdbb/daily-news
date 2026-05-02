@@ -22,40 +22,34 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Python news collector (main sources)
-        run: timeout 120 python3 .github/scripts/fetch_news.py || echo 'MAIN_COLLECTOR_FAILED'
+      - name: Python collector
+        run: timeout 150 python3 .github/scripts/fetch_news.py || echo 'COLLECT_FAILED'
 
-      - name: RSS collector (international sources)
-        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'RSS_COLLECTOR_FAILED'
+      - name: RSS collector
+        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'RSS_FAILED'
 
-      - name: Vertical collector (Zhihu/Douban/GitHub/sspai)
-        run: timeout 90 python3 .github/scripts/fetch_more.py || echo 'MORE_COLLECTOR_FAILED'
+      - name: Vertical collector
+        run: timeout 90 python3 .github/scripts/fetch_more.py || echo 'MORE_FAILED'
 
-      - name: Merge all collectors
+      - name: Merge
         run: python3 .github/scripts/merge_news.py
 
-      - name: Python page builder
-        working-directory: ./
+      - name: Build page
         run: |
           mkdir -p _site
           python3 .github/scripts/generate_site.py
 
-      - name: Create .nojekyll
+      - name: .nojekyll
         run: touch _site/.nojekyll
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: '_site'
 
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
