@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""垂直领域采集器 - 知乎日报/豆瓣热门/GitHub Trending/少数派 (curl双引擎)"""
+"""垂直领域采集器 - 只留高质量源"""
 import json, subprocess, urllib.request, urllib.error, ssl, re
 
 def curl(url):
@@ -34,52 +34,31 @@ def f_json(url):
 def collect():
     all_news = []
 
-    # 1. 知乎日报
-    print('  Fetching 知乎日报...')
-    data = f_json('https://daily.zhihu.com/api/4/news/latest')
-    if data and 'stories' in data:
-        for s in data['stories'][:5]:
-            t = s.get('title','')
-            if t:
-                all_news.append({'t':t[:50], 'u':s.get('url',''), 'src':'知乎日报'})
-        print(f'    获得 {min(5,len(data["stories"]))} 条')
-
-    # 2. 豆瓣热门
-    print('  Fetching 豆瓣热门...')
-    h = f('https://www.douban.com/')
-    for m in re.finditer(r'<a[^>]*href="(https://[^"]*douban\.com[^"]+)"[^>]*>([^<]{8,50})</a>', h):
-        if len(all_news) >= 20: break
-        t = m.group(2).strip()
-        if len(t) >= 6 and '更多' not in t and '登录' not in t:
-            all_news.append({'t':t[:50], 'u':m.group(1), 'src':'豆瓣热门'})
-
-    # 3. GitHub Trending
-    print('  Fetching GitHub Trending...')
-    h = f('https://github.com/trending')
-    for m in re.finditer(r'<h2[^>]*class="[^"]*h3[^"]*"[^>]*>\s*<a[^>]*href="/([^/]+/[^/"]+)"[^>]*>([^<]+)</a>', h):
-        if len(all_news) >= 30: break
-        t = m.group(2).strip().replace('\n','').strip()
-        repo = m.group(1).strip()
-        if t:
-            all_news.append({'t':repo, 'u':'https://github.com/'+repo, 'src':'GitHub Trending'})
-    
-    # 4. 少数派
+    # 1. 少数派 (效率工具/深度文章)
     print('  Fetching 少数派...')
     h = f('https://sspai.com/')
     for m in re.finditer(r'<a[^>]*href="(https?://sspai\.com[^"]+)"[^>]*>([^<]{8,50})</a>', h):
-        if len(all_news) >= 35: break
+        if len(all_news) >= 8: break
         t = m.group(2).strip()
         if len(t) >= 6 and '会员' not in t and '广告' not in t:
             all_news.append({'t':t[:50], 'u':m.group(1), 'src':'少数派'})
 
-    # 5. QbitAI
+    # 2. QbitAI (AI/科技)
     print('  Fetching QbitAI...')
     h = f('https://www.qbitai.com/')
     for m in re.finditer(r'<a[^>]*href="(https?://www\.qbitai\.com/\d+[^"]*)"[^>]*>([^<]{8,50})</a>', h):
-        if len(all_news) >= 40: break
+        if len(all_news) >= 12: break
         t = m.group(2).strip()
         if len(t) >= 6:
             all_news.append({'t':t[:50], 'u':m.group(1), 'src':'QbitAI'})
+
+    # 3. GitHub Trending (科技趋势)
+    print('  Fetching GitHub Trending...')
+    h = f('https://github.com/trending')
+    for m in re.finditer(r'<h2[^>]*class="[^"]*h3[^"]*"[^>]*>\s*<a[^>]*href="/([^/]+/[^/"]+)"[^>]*>([^<]+)</a>', h):
+        if len(all_news) >= 6: break
+        repo = m.group(1).strip()
+        all_news.append({'t':repo + ' ⭐', 'u':'https://github.com/'+repo, 'src':'GitHub'})
 
     return all_news
 

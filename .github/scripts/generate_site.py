@@ -48,15 +48,26 @@ if not any(groups.values()) and all_news:
         groups.setdefault(n.get('cat','hot'), []).append(n)
 
 # 头条：只从finance和macro取前6条
+# 头条：从finance/macro排名前取，过滤无价值条目
 headlines = []
+headline_ban = ['Choice','金融终端','客户端','理财','下载','APP','app','基金','估值']
+def is_headline_good(t):
+    for b in headline_ban:
+        if b in t: return False
+    return True
 for c in ['finance','macro']:
     items = groups.get(c, [])
-    for item in items[:3]:
-        nn = escape(item.get('t',''))
+    count = 0
+    for item in items:
+        if count >= 3: break
+        t = item.get('t','')
+        if not is_headline_good(t): continue
+        nn = escape(t)
         src = escape(item.get('src',''))
         bg = cat_colors.get(c, '#666')
         uu = item.get('u','#')
         headlines.append({'t':nn, 'src':src, 'color':bg, 'u':uu, 'cat_label':cat_names[c]})
+        count += 1
 
 # 热词
 wf = {}
