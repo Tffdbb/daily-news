@@ -33,6 +33,7 @@ for idx, items in enumerate(sources_data):
 
 total = len(all_news)
 active_srcs = sorted(set(n['src'] for n in all_news))
+print(f'Loaded {total} news from {len(active_srcs)} sources: {active_srcs}')
 active_count = len(active_srcs)
 
 # ── 分类 ──
