@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""每日价值资讯 - 简易防弹版"""
+"""每日价值资讯 - 分层展示版：头条+各板块"""
 import json, os, datetime, re, sys
 
 try:
@@ -48,7 +48,18 @@ if not any(groups.values()) and all_news:
     for n in all_news:
         groups.setdefault(n.get('cat','hot'), []).append(n)
 
-# 热词
+# === 头条精选：从各板块前2条组成 ===
+headlines = []
+for c in order:
+    items = groups.get(c, [])
+    for item in items[:2]:
+        nn = escape(item.get('t',''))
+        src = escape(item.get('src',''))
+        bg = cat_colors.get(c, '#666')
+        uu = item.get('u','#')
+        headlines.append({'t':nn, 'src':src, 'color':bg, 'u':uu, 'cat_label':cat_names[c]})
+
+# === 热词 ===
 wf = {}
 skip = set(['报道','新闻','中国','市场','公司','发布','最新','一个','进行','表示','以及','没有','不是','正在','这个','已经','可以','其他','我们','除了','并且','虽然','但是','因为','所以'])
 txt = ' '.join(n.get('t','') for n in all_news)
@@ -58,9 +69,9 @@ for m in re.finditer('[\u4e00-\u9fff]{2,4}', txt):
         wf[w] = wf.get(w,0)+1
 hw = sorted(wf.items(), key=lambda x:-x[1])[:12]
 
-# 股票行
+# === 股票 ===
 stocks = data.get('stocks', [])
-sr = ''
+sr_parts = []
 for s in stocks:
     sn = escape(s.get('n',''))
     sv = escape(s.get('p',''))
@@ -68,15 +79,20 @@ for s in stocks:
     sc2 = escape(s.get('c',''))
     sr2 = escape(s.get('r',''))
     tri = '&#9650;' if sc == 'up' else '&#9660;'
-    sr += '<div class="si"><span class="sn">'+sn+'</span><span class="sv">'+sv+'</span><span class="sc2 '+sc+'">'+tri+' '+sc2+' '+sr2+'</span></div>\n'
+    sr_parts.append(
+        '<div class="si"><span class="sn">'+sn+'</span>'
+        '<span class="sv">'+sv+'</span>'
+        '<span class="sc2 '+sc+'">'+tri+' '+sc2+' '+sr2+'</span></div>')
+sr = ''.join(sr_parts)
 
-forex = data.get('forex', {}) or {'USD':'7.2420','EUR':'7.8321','JPY':'0.0450','GBP':'9.1250','HKD':'0.9280'}
+forex = data.get('forex', {}) or {'USD':'7.2420','EUR':'7.8321','JPY':'4.83','GBP':'9.1250','HKD':'0.9280'}
 fxm = {'USD':'美元','EUR':'欧元','JPY':'日元','GBP':'英镑','HKD':'港币'}
 fr = ''
 for k in ['USD','EUR','JPY','GBP','HKD']:
     if k in forex:
         fr += '<div class="fi"><span>'+fxm[k]+' ('+k+')</span><span class="fv">'+forex[k]+'</span></div>\n'
 
+# === 天气 ===
 wh = ''
 try:
     import urllib.request as u
@@ -89,21 +105,38 @@ try:
     de = cc.get('weatherDesc',[{}])[0].get('value','--')
     ws = cc.get('windspeedKmph','--')
     we = '☀️' if '晴' in de else '⛅' if '云' in de else '🌧️' if '雨' in de else '🌤️'
-    wh = '<div class="se" id="w"><div class="weather-bar">'+we+' 北京 '+tm+'&#176; '+de+'  &#128168;'+ws+'km/h</div></div>'
+    wh = '<div class="se" id="w"><div class="weather-bar">'+we+' 北京 '+tm+'&#176; '+de+'  &#168;'+ws+'km/h</div></div>'
 except:
     pass
 
-# 导航
+# === 导航 ===
 nav = ''
 for c in order:
     nav += '<a href="#g'+c+'">'+cat_names[c]+'</a>'
 
+# === 头条HTML ===
+hl_html = ''
+if headlines:
+    hls = ''
+    for i, hl in enumerate(headlines):
+        label = hl['cat_label']
+        clr = hl['color']
+        hls += (
+            '<div class="hl" onclick="window.open(\''+hl['u']+'\',\'_blank\')">'
+            '<span class="hb" style="background:'+clr+'">'+label[:4]+'</span>'
+            '<span class="ht">'+hl['t']+'</span>'
+            '<span class="hs">'+hl['src']+'</span>'
+            '</div>\n')
+    hl_html = '<div class="se" id="top"><div class="sh"><span class="st">🔥 今日头条</span><span class="sc">'+str(len(headlines))+'条</span></div>\n'+hls+'</div>\n'
+
+# === 各板块HTML ===
 news_html = ''
 for c in order:
     items = groups.get(c, [])
     if not items:
         continue
     bg = cat_colors.get(c, '#666')
+    cat_label = cat_names[c]
     inner = ''
     for i, item in enumerate(items):
         nn = escape(item.get('t',''))
@@ -112,8 +145,9 @@ for c in order:
         inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')">\n'
         inner += '<div class="nt"><span class="ni" style="background:'+bg+'">'+str(i+1)+'</span><span class="nn">'+nn+'</span></div>\n'
         inner += '<div class="nm"><span class="ns" style="color:'+bg+'">&#9679;</span><span class="nsrc">'+s+'</span></div></div>\n'
-    news_html += '<div class="se" id="g'+c+'"><div class="sh"><span class="st">'+cat_names[c]+'</span><span class="sc">'+str(len(items))+'</span></div>\n'+inner+'</div>\n'
+    news_html += '<div class="se" id="g'+c+'"><div class="sh"><span class="st">'+cat_label+'</span><span class="sc">'+str(len(items))+'条</span></div>\n'+inner+'</div>\n'
 
+# === 热词 ===
 hw_html = ''
 if hw:
     tags = ''
@@ -124,18 +158,33 @@ if hw:
 src_html = ' · '.join(escape(s) for s in srcs)
 market_html = ''
 if sr:
-    market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span></div><div class="sg">'+sr+'</div></div>'
+    market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span><span class="sc">实时</span></div><div class="sg">'+sr+'</div></div>'
 fx_html = ''
 if fr:
     fx_html = '<div class="se" id="f"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">'+fr+'</div></div>'
 
-header = '<div class="app">\n<header>\n<div class="top"><span class="tl">📊 每日价值资讯</span><span class="live"></span></div>\n<div class="sub"><span>'+dc+'</span><span class="gr">'+gr+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>\n<nav>'+nav+'</nav>\n</header>\n'
+# === 开始组装 ===
+body = ''
 
-body = header + market_html + fx_html + wh + hw_html + news_html
-body += '<div class="se" id="s"><div class="sh"><span class="st">📡 来源</span></div><div class="srcs">'+src_html+'</div></div>\n'
-body += '<footer>📊 每2小时更新 · 投资·宏观·热点·科技·机会</footer>\n</div>\n'
+# header
+body += '<header>\n'
+body += '<div class="top"><span class="tl">📊 每日价值资讯</span><span class="live"></span></div>\n'
+body += '<div class="sub"><span>'+dc+'</span><span class="gr">'+gr+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>\n'
+body += '<nav>'+nav+'</nav>\n</header>\n'
+
+# 内容区
+body += market_html + fx_html + wh + hl_html + hw_html + news_html
+
+# 来源
+body += '<div class="se" id="s"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>\n'
+
+# footer
+body += '<footer>📊 每2小时更新 · 投资 · 宏观 · 热点 · 科技 · 机会</footer>\n'
+
+# back to top
 body += '<div id="bt" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">↑</div>\n'
 
+# === JS ===
 script = '<script>\n'
 script += 'var bt=document.getElementById("bt");\n'
 script += 'window.addEventListener("scroll",function(){bt.style.opacity=window.scrollY>200?1:0});\n'
@@ -144,10 +193,11 @@ script += 'var ti=0,tt=["📊 每日价值资讯","📰 '+str(total)+'条","🔍
 script += 'setInterval(function(){document.title=tt[ti%3];ti++},4000);\n'
 script += '</script>\n'
 
+# === CSS ===
 css = '''*{margin:0;padding:0;box-sizing:border-box}
 body{background:#0b0e16;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5;min-height:100vh}
+header{padding:14px 12px 8px;position:sticky;top:0;background:rgba(11,14,22,0.93);z-index:10;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,0.03);max-width:780px;margin:0 auto}
 .app{max-width:780px;margin:0 auto;padding:0 12px 40px}
-header{padding:14px 0 8px;position:sticky;top:0;background:rgba(11,14,22,0.93);z-index:10;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,0.03);margin:0 -12px;padding:14px 12px 8px}
 .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
 .tl{font-size:20px;font-weight:700;background:linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .sub{font-size:10px;color:#4a5a6d;display:flex;gap:8px;align-items:center;margin:3px 0 5px}
@@ -162,6 +212,13 @@ nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
 .sh{display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.02)}
 .st{font-size:13px;font-weight:600}
 .sc{font-size:10px;color:#4a5a6d;margin-left:auto}
+/* 头条样式 */
+.hl{padding:5px 0;cursor:pointer;margin:0 -3px;padding:6px 3px;border-radius:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.hl:hover{background:rgba(255,255,255,0.01)}
+.hb{display:inline-flex;padding:0 5px;height:16px;color:#fff;font-size:8px;font-weight:700;border-radius:3px;align-items:center;justify-content:center;flex-shrink:0}
+.ht{font-size:14px;font-weight:600;flex:1;line-height:1.4}
+.hs{font-size:9px;color:#3d4a5d}
+/* 新闻样式 */
 .nc{padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.008);cursor:pointer;margin:0 -3px;padding:6px 3px;border-radius:5px}
 .nc:last-child{border-bottom:none}
 .nc:hover{background:rgba(255,255,255,0.01)}
@@ -183,12 +240,12 @@ nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
 .tgs{display:flex;flex-wrap:wrap;gap:4px;padding:2px 0 4px}
 .tg{background:rgba(99,102,241,0.04);color:#818cf8;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:500}
 .srcs{font-size:9px;color:#3d4a5d;line-height:1.5;padding:2px 0}
-footer{padding:10px 0;text-align:center;font-size:9px;color:#333}
+footer{padding:10px 0;text-align:center;font-size:9px;color:#2a3045}
 #bt{position:fixed;bottom:50px;right:12px;width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);color:#818cf8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;opacity:0;transition:opacity .3s}
 @media(max-width:480px){.sg,.fg{grid-template-columns:1fr}.tl{font-size:18px}}
 '''
 
-html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n'+body+script+'\n</body>\n</html>'
+html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
 
 os.makedirs('_site', exist_ok=True)
 with open('_site/index.html', 'w', encoding='utf-8') as f:
