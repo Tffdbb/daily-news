@@ -470,49 +470,75 @@ ${secs}
 
 // ====== Main ======
 async function main() {
-  const date = getDate();
+  // Read data from Python collector
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync('news_data.json', 'utf8'));
+  } catch(e) {
+    console.log('WARN: news_data.json not found, falling back to direct fetch');
+    // Fall back to direct fetch if Python data not available
+    const results = await Promise.all([
+      s1(),s2(),s3(),s4(),s5(),s6(),s7(),s8(),s9(),s10(),
+      s11(),s12(),s13(),s14(),s15(),s16(),s17(),s18(),s19(),s20(),s21(),s22(),s23()
+    ]);
+    const namesArr = results;
+    const labels = ['同花顺','华尔街见闻','财联社','第一财经','网易','新浪财经','新华网','人民网','中国新闻网','央视新闻','凤凰网','财新网','每经','证券时报','中证报','IT之家','百度','澎湃新闻','36氪','Donews','新浪体育','虎嗅','人民健康'];
+    
+    const cnt = {};
+    namesArr.forEach((arr, idx) => { if (arr.length) cnt[labels[idx]] = arr.length; });
+    console.log('Fallback sources('+Object.keys(cnt).length+'):', Object.values(cnt).reduce((a,b)=>a+b,0), '条');
+    Object.entries(cnt).forEach(([k,v]) => console.log('  '+k+':'+v));
+
+    const [stocks, forex] = await Promise.all([getStocks(), getForex()]);
+    console.log('  股票:', stocks.length > 0 ? 'live' : 'fallback', '| 汇率:', forex.USD ? 'live' : 'fallback');
+
+    const allNews = [].concat(...namesArr);
+    const classified = classify(allNews);
+    dedupe(classified);
+    
+    console.log('分类:');
+    Object.entries(classified).forEach(([k,v])=>{ if(v.length) console.log('  '+k+':'+v.length); });
+    
+    const sections = makeSections(classified);
+    const stats = { sources: Object.keys(cnt).length, names: Object.keys(cnt).join(' · ') };
+    const wx = [{d:"今天",i:"🌧️",t:"14~17°C",c:"小雨转阴"},{d:"明天",i:"🌫️",t:"11~17°C",c:"雾转阵雨"},{d:"后天",i:"☀️",t:"10~25°C",c:"晴"}];const html = buildPage(data?.date || getDate(), sections, stocks||[], wx, forex||{}, stats);
+    writeOutput(html);
+    return;
+  }
+
+  const { date, sources: cnt, news: namesArr, labels, stocks, forex, timestamp } = data;
+  
   console.log('=== 全源聚合 ('+date+') ===');
-  console.time('all');
-
-  const results = await Promise.all([
-    s1(),s2(),s3(),s4(),s5(),s6(),s7(),s8(),s9(),s10(),
-    s11(),s12(),s13(),s14(),s15(),s16(),s17(),s18(),s19(),s20(),s21(),s22(),s23()
-  ]);
-
-  const [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,a23] = results;
-
-  const namesArr = [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,a23];
-  const labels = ['同花顺','华尔街见闻','财联社','第一财经','网易','新浪财经','新华网','人民网','中国新闻网','央视新闻','凤凰网','财新网','每经','证券时报','中证报','IT之家','百度','澎湃新闻','36氪','Donews','新浪体育','虎嗅','人民健康'];
-
-  const cnt = {}; let totalSrc = 0;
-  namesArr.forEach((arr, idx) => { if (arr.length) { cnt[labels[idx]] = arr.length; totalSrc += arr.length; }});
-
   console.log('来源('+Object.keys(cnt).length+'):', Object.values(cnt).reduce((a,b)=>a+b,0), '条');
   Object.entries(cnt).forEach(([k,v]) => console.log('  '+k+':'+v));
+  console.log('  股票:', stocks?.length ? 'live' : 'fallback', '| 汇率:', forex?.USD ? 'live' : 'fallback');
 
-  // Stocks & forex
-  const [stocks, fx] = await Promise.all([getStocks(), getForex()]);
-  console.log('  股票:', stocks.length > 0 ? 'live' : 'fallback', '| 汇率:', fx.USD ? 'live' : 'fallback');
-
-  // Merge + classify
   const allNews = [].concat(...namesArr);
   const classified = classify(allNews);
+  dedupe(classified);
+  
+  console.log('分类:');
+  Object.entries(classified).forEach(([k,v])=>{ if(v.length) console.log('  '+k+':'+v.length); });
+  
+  const sections = makeSections(classified);
+  const stats = { sources: Object.keys(cnt).length, names: Object.keys(cnt).join(' · ') };
+  const wx = [{d:"今天",i:"🌧️",t:"14~17°C",c:"小雨转阴"},{d:"明天",i:"🌫️",t:"11~17°C",c:"雾转阵雨"},{d:"后天",i:"☀️",t:"10~25°C",c:"晴"}];const html = buildPage(date, sections, stocks||[], wx, forex||{}, stats);
+  writeOutput(html);
+}
+
+function dedupe(classified) {
   const seen = new Set();
   Object.keys(classified).forEach(key => {
     classified[key] = classified[key].filter(item => {
       const h = item.t.substring(0,8);
       if (seen.has(h)) return false;
       seen.add(h); return true;
-
     });
   });
+}
 
-  console.log('分类:');
-  Object.entries(classified).forEach(([k,v])=>{
-    if(v.length) console.log('  '+k+':'+v.length);
-  });
-
-  const sections = [
+function makeSections(classified) {
+  return [
     {id:'world',title:'国际要闻',icon:'🌍',items:classified.world.length?classified.world:[{t:'暂无国际新闻',s:'',src:'系统',u:'#'}]},
     {id:'tech',title:'科技动态',icon:'💻',items:classified.tech.length?classified.tech:[{t:'暂无科技资讯',s:'',src:'系统',u:'#'}]},
     {id:'china',title:'A股/民生',icon:'📈',items:classified.china.length?classified.china:[{t:'暂无相关资讯',s:'',src:'系统',u:'#'}]},
@@ -526,24 +552,11 @@ async function main() {
       {t:'2003年 — 中国海军首次环球航行',s:'',src:'历史',u:'#'}
     ]}
   ];
-
-  const weather = [
-    {d:'今天',i:'🌧️',t:'14~17°C',c:'小雨转阴'},
-    {d:'明天',i:'🌫️',t:'11~17°C',c:'雾转阵雨'},
-    {d:'后天',i:'☀️',t:'10~25°C',c:'晴'}
-  ];
-
-  const stats = {
-    sources: Object.keys(cnt).length,
-    names: Object.keys(cnt).join(' · ')
-  };
-
-  const html = buildPage(date, sections, stocks, weather, fx, stats);
-
-  const outPath = process.env.GITHUB_OUTPUT ? (process.env.GITHUB_WORKSPACE || '.') + '/index.html' : 'G:\\claw1232\\portable\\data\\.openclaw\\canvas\\daily-news\\index.html';
-  fs.writeFileSync(outPath, html, 'utf8');
-  console.log('\n写入: ' + outPath + ' (' + html.length + ' bytes)');
-  console.log('=== 完成 ===');
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+function writeOutput(html) {
+  const outPath = process.env.GITHUB_OUTPUT ? (process.env.GITHUB_WORKSPACE || '.') + '/index.html' : 'G:\\claw1232\\portable\\data\\.openclaw\\canvas\\daily-news\\index.html';
+  fs.writeFileSync(outPath, html, 'utf8');
+  console.log('\\n写入: ' + outPath + ' (' + html.length + ' bytes)');
+  console.log('=== 完成 ===');
+}main().catch(e => { console.error(e); process.exit(1); });

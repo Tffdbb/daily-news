@@ -29,7 +29,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run news generator
+      - name: Python news collector
+        run: python3 .github/scripts/fetch_news.py
+
+      - name: Node page builder
         run: node .github/scripts/generate_site_gh.js
 
       - name: Create .nojekyll
