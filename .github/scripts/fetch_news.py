@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""环球资讯早报 - 数据采集器（混合工具版：curl + urllib 双引擎）"""
-import json, re, datetime, os, subprocess, sys
+"""环球资讯早报 - 数据采集器（混合工具版：curl + urllib 双引擎 + 并行采集）"""
+import json, re, datetime, os, subprocess, sys, threading, concurrent.futures
 
 CTX = None
 try:
@@ -23,7 +23,6 @@ def urlopen(url, timeout=10):
     except: return ''
 
 def f_either(url, timeout=9):
-    """双引擎：curl优先 + urllib fallback"""
     h = curl_fetch(url, timeout)
     if len(h) < 100:
         h2 = urlopen(url, timeout+1)
@@ -186,23 +185,40 @@ def s36():
     h=f_either('https://www.zhihu.com/');i=pat(h,r'"title":"([^"]{6,50})"',3)
     return [{'t':t,'src':'\u77e5\u4e4e\u63a8\u8350','u':'https://www.zhihu.com/'} for t in i]
 
+def _run_src(fn):
+    try:
+        return fn() or []
+    except:
+        return []
+
 def main():
     sources = [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20,s21,s22,s23,s24,s25,s26,s27,s28,s29,s30,s31,s32,s33,s34,s35,s36]
     news = []
-    for fn in sources:
+    
+    # 并行采集：12线程 + 90秒总超时
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+        futs = {ex.submit(_run_src, fn): i for i, fn in enumerate(sources)}
         try:
-            items = fn()
-            if items: news.extend(items)
-        except: pass
+            for f in concurrent.futures.as_completed(futs, timeout=90):
+                try:
+                    items = f.result(timeout=3)
+                    if items: news.extend(items)
+                except: pass
+        except concurrent.futures.TimeoutError:
+            for f in futs: f.cancel()
+            print('PARALLEL_TIMEOUT: some sources did not finish in 90s')
+    
     seen=set();deduped=[]
     for n in news:
         k=n.get('t','')[:10]
         if k and k not in seen and len(n.get('t',''))>=4: seen.add(k);deduped.append(n)
-    stocks=[{'n':'\u6052\u751f\u6307\u6570','p':'20536.47','c':'-156.35','r':'-0.76%'},{'n':'\u4e0a\u8bc1\u6307\u6570','p':'3684.32','c':'13.45','r':'0.37%'},{'n':'\u6df1\u8bc1\u6210\u6307','p':'11842.14','c':'55.82','r':'0.47%'},{'n':'\u521b\u4e1a\u677f\u6307','p':'2488.65','c':'8.23','r':'0.33%'},{'n':'\u9053\u7434\u65af','p':'42918.72','c':'218.34','r':'0.51%'},{'n':'\u7eb3\u65af\u8fbe\u514b','p':'19217.94','c':'-46.21','r':'-0.24%'},{'n':'\u6807\u666e500','p':'5820.14','c':'14.23','r':'0.25%'},{'n':'\u65e5\u7ecf225','p':'39245.31','c':'-124.56','r':'-0.32%'}]
+    
+    stocks=[{'n':'恒生指数','p':'20536.47','c':'-156.35','r':'-0.76%'},{'n':'上证指数','p':'3684.32','c':'13.45','r':'0.37%'},{'n':'深证成指','p':'11842.14','c':'55.82','r':'0.47%'},{'n':'创业板指','p':'2488.65','c':'8.23','r':'0.33%'},{'n':'道琴斯','p':'42918.72','c':'218.34','r':'0.51%'},{'n':'纳斯达克','p':'19217.94','c':'-46.21','r':'-0.24%'},{'n':'标普500','p':'5820.14','c':'14.23','r':'0.25%'},{'n':'日经225','p':'39245.31','c':'-124.56','r':'-0.32%'}]
     forex={'USD':'7.2420','EUR':'7.8321','JPY':'0.0450','GBP':'9.1250','HKD':'0.9280','KRW':'0.0052'}
     output={'news':deduped,'stocks':stocks,'forex':forex,'labels':[]}
     with open('news_data.json','w',encoding='utf-8') as f:
         json.dump(output,f,ensure_ascii=False)
+    
     print('Done:', len(deduped), 'news')
 
 if __name__ == '__main__':
