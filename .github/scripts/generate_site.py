@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""每日价值资讯 - 干净有冲劲的版面 V3"""
-import json, os, datetime, re
-from html import escape
+"""每日价值资讯 V3 - 防弹版"""
+import json, os, datetime, re, sys, traceback
+
+try:
+    from html import escape
+except:
+    import cgi
+    def escape(s, quote=False):
+        return cgi.escape(s, quote)
 
 with open('news_data.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
 wd = ['星期一','星期二','星期三','星期四','星期五','星期六','星期日']
-dc = f'{now.month}月{now.day}日 {wd[now.weekday()]}'
+dc = '%s月%s日 %s' % (now.month, now.day, wd[now.weekday()])
 h = now.hour
 gr = '早上好' if 5<=h<12 else '中午好' if 12<=h<14 else '下午好' if 14<=h<18 else '晚上好'
 
@@ -19,19 +25,22 @@ groups = data.get('groups', {})
 
 if isinstance(sd, list):
     for item in sd:
-        if isinstance(item, dict) and 't' in item:
-            t = item.get('t','').strip()[:60]
-            if len(t)>=5: all_news.append(item)
+        if isinstance(item, dict):
+            t = (item.get('t') or '').strip()[:60]
+            if len(t) >= 5:
+                all_news.append(item)
         elif isinstance(item, list):
             for it in item:
-                t = (it.get('t') or it.get('title') or '').strip()[:60]
-                if len(t)>=5: all_news.append({'t':t,'src':it.get('src',''),'cat':it.get('cat','hot'),'u':escape(it.get('u','#'),quote=True)})
+                if isinstance(it, dict):
+                    t = (it.get('t') or it.get('title') or '').strip()[:60]
+                    if len(t) >= 5:
+                        all_news.append({'t':t,'src':it.get('src',''),'cat':it.get('cat','hot'),'u':escape(it.get('u','#'), quote=True)})
 
 total = len(all_news)
-srcs = sorted(set(n['src'] for n in all_news))
+srcs = sorted(set(n.get('src','') for n in all_news))
 
-C = {'finance':'📈 投资·财经','macro':'🌐 宏观·天下','hot':'🔥 热点·民生','tech':'💡 科技·前沿','oppo':'🎯 机会·风向'}
-CC = {'finance':'#f59e0b','macro':'#3b82f6','hot':'#ef4444','tech':'#8b5cf6','oppo':'#22c55e'}
+cat_names = {'finance':'📈 投资·财经','macro':'🌐 宏观·天下','hot':'🔥 热点·民生','tech':'💡 科技·前沿','oppo':'🎯 机会·风向'}
+cat_colors = {'finance':'#f59e0b','macro':'#3b82f6','hot':'#ef4444','tech':'#8b5cf6','oppo':'#22c55e'}
 order = ['finance','macro','hot','tech','oppo']
 
 if not any(groups.values()) and all_news:
@@ -41,59 +50,30 @@ if not any(groups.values()) and all_news:
 
 # 热词
 wf = {}
-skip = {'报道','新闻','中国','市场','公司','发布','最新','一个','进行','表示','以及','没有','不是','正在','这个','已经','可以','其他','我们','除了'}
-for m in re.finditer('[\u4e00-\u9fff]{2,4}', ' '.join(n['t'] for n in all_news)):
+skip = set(['报道','新闻','中国','市场','公司','发布','最新','一个','进行','表示','以及','没有','不是','正在','这个','已经','可以','其他','我们','除了','并且','虽然','但是','因为','所以'])
+txt = ' '.join(n.get('t','') for n in all_news)
+for m in re.finditer('[\u4e00-\u9fff]{2,4}', txt):
     w = m.group()
-    if w not in skip and len(w)>=2: wf[w] = wf.get(w,0)+1
+    if w not in skip:
+        wf[w] = wf.get(w,0)+1
 hw = sorted(wf.items(), key=lambda x:-x[1])[:12]
 
-# 构建 HTML 各部件（避免 f-string 内嵌引号冲突）
-nav_parts = []
-for c in order:
-    nav_parts.append('<a href="#g{c}">{title}</a>'.format(c=c, title=C[c]))
-nav = ''.join(nav_parts)
-
-news_parts = []
-for c in order:
-    items = groups.get(c, [])
-    if not items:
-        continue
-    bg = CC.get(c,'#666')
-    inner = ''
-    for i, item in enumerate(items):
-        nn = escape(item['t'])
-        src = escape(item['src'])
-        inner += (
-            '<div class="nc" onclick="window.open(\'{u}\',\'_blank\')">\n'
-            '<div class="nt"><span class="ni" style="background:{bg}">{idx}</span>'
-            '<span class="nn">{t}</span></div>\n'
-            '<div class="nm"><span class="ns" style="color:{bg}">&#9679;</span>'
-            '<span class="nsrc">{s}</span></div></div>\n'
-        ).format(u=item['u'], bg=bg, idx=i+1, t=nn, s=src)
-    news_parts.append(
-        '<div class="se" id="g{c}">'
-        '<div class="sh"><span class="st">{title}</span>'
-        '<span class="sc">{cnt}</span></div>\n{inner}</div>\n'
-        .format(c=c, title=C[c], cnt=len(items), inner=inner))
-news_html = ''.join(news_parts)
-
-# 股票 - 避免 f-string 引号冲突
+# 股票
 stocks = data.get('stocks', [])
 sr_parts = []
-up_tri = chr(9650)
-down_tri = chr(9660)
 for s in stocks:
-    sn = escape(s.get('n',''))
-    sv = escape(s.get('p',''))
-    sc = s.get('cls','')
-    cn = escape(s.get('c',''))
-    rr = escape(s.get('r',''))
-    tri = up_tri if sc == 'up' else down_tri
+    s_n = escape(s.get('n',''))
+    s_v = escape(s.get('p',''))
+    s_cls = s.get('cls','')
+    s_c = escape(s.get('c',''))
+    s_r = escape(s.get('r',''))
+    tri = '▲' if s_cls == 'up' else '▼'
     sr_parts.append(
-        '<div class="si"><span class="sn">{n}</span>'
-        '<span class="sv">{v}</span>'
-        '<span class="sc2 {cls}">{tri} {c} {r}</span></div>\n'
-        .format(n=sn, v=sv, cls=sc, tri=tri, c=cn, r=rr))
+        '<div class="si">'
+        '<span class="sn">%s</span>'
+        '<span class="sv">%s</span>'
+        '<span class="sc2 %s">%s %s %s</span>'
+        '</div>\n' % (s_n, s_v, s_cls, tri, s_c, s_r))
 sr = ''.join(sr_parts)
 
 forex = data.get('forex', {}) or {'USD':'7.2420','EUR':'7.8321','JPY':'0.0450','GBP':'9.1250','HKD':'0.9280'}
@@ -101,8 +81,11 @@ fxm = {'USD':'美元','EUR':'欧元','JPY':'日元','GBP':'英镑','HKD':'港币
 fr_parts = []
 for k in ['USD','EUR','JPY','GBP','HKD']:
     if k in forex:
-        fr_parts.append('<div class="fi"><span>{n} ({k})</span><span class="fv">{v}</span></div>\n'
-                       .format(n=fxm[k], k=k, v=forex[k]))
+        fr_parts.append(
+            '<div class="fi">'
+            '<span>%s (%s)</span>'
+            '<span class="fv">%s</span>'
+            '</div>\n' % (fxm[k], k, forex[k]))
 fr = ''.join(fr_parts)
 
 # 天气
@@ -120,29 +103,56 @@ try:
     de = cc.get('weatherDesc',[{}])[0].get('value','--')
     ws = cc.get('windspeedKmph','--')
     we = '☀️' if '晴' in de else '⛅' if '云' in de else '🌧️' if '雨' in de else '🌤️'
-    wh = '<div class="se" id="w"><div class="weather-bar">{we} 北京 {tm}° {de}  💨{ws}km/h</div></div>'.format(we=we, tm=tm, de=de, ws=ws)
+    wh = '<div class="se" id="w"><div class="weather-bar">%s 北京 %s° %s  💨%skm/h</div></div>' % (we, tm, de, ws)
 except:
     pass
 
-# 热词html
+# 导航
+nav_parts = []
+for c in order:
+    nav_parts.append('<a href="#g%s">%s</a>' % (c, cat_names[c]))
+nav = ''.join(nav_parts)
+
+# 新闻块
+news_parts = []
+for c in order:
+    items = groups.get(c, [])
+    if not items:
+        continue
+    bg = cat_colors.get(c, '#666')
+    inner = ''
+    for i, item in enumerate(items):
+        nn = escape(item.get('t',''))
+        src = escape(item.get('src',''))
+        uurl = escape(item.get('u','#'), quote=True)
+        inner += (
+            '<div class="nc" onclick="window.open(\'%s\',\'_blank\')">\n'
+            '<div class="nt"><span class="ni" style="background:%s">%d</span>'
+            '<span class="nn">%s</span></div>\n'
+            '<div class="nm"><span class="ns" style="color:%s">&#9679;</span>'
+            '<span class="nsrc">%s</span></div></div>\n'
+        ) % (uurl, bg, i+1, nn, bg, src)
+    news_parts.append(
+        '<div class="se" id="g%s">'
+        '<div class="sh"><span class="st">%s</span>'
+        '<span class="sc">%d</span></div>\n%s</div>\n'
+        % (c, cat_names[c], len(items), inner))
+news_html = ''.join(news_parts)
+
 hw_html = ''
 if hw:
-    hw_parts = []
-    for w, _ in hw:
-        hw_parts.append('<span class="tg">#{w}</span>'.format(w=escape(w)))
-    hw_html = '<div class="se" id="h"><div class="sh"><span class="st">🔥 今日热词</span></div><div class="tgs">{tags}</div></div>'.format(tags=''.join(hw_parts))
+    hw_inner = ''.join('<span class="tg">#%s</span>' % escape(w) for w, _ in hw)
+    hw_html = '<div class="se" id="h"><div class="sh"><span class="st">🔥 今日热词</span></div><div class="tgs">%s</div></div>' % hw_inner
 
-# 来源
 src_html = ' · '.join(escape(s) for s in srcs)
 
-# 市场块
 market_html = ''
 if sr:
-    market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span></div><div class="sg">{sr}</div></div>'.format(sr=sr)
+    market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span></div><div class="sg">%s</div></div>' % sr
 
 fx_html = ''
 if fr:
-    fx_html = '<div class="se" id="f"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">{fr}</div></div>'.format(fr=fr)
+    fx_html = '<div class="se" id="f"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">%s</div></div>' % fr
 
 html = '''<!DOCTYPE html>
 <html lang="zh-CN">
@@ -199,19 +209,15 @@ footer{padding:10px 0;text-align:center;font-size:9px;color:#333}
 <div class="app">
 <header>
 <div class="top"><span class="tl">📊 每日价值资讯</span><span class="live"></span></div>
-<div class="sub"><span>{dc}</span><span class="gr">{gr}</span><span>{total}条 · {ls}源</span></div>
-<nav>{nav}</nav>
+<div class="sub"><span>%s</span><span class="gr">%s</span><span>%d条 · %d源</span></div>
+<nav>%s</nav>
 </header>
-'''.format(dc=dc, gr=gr, total=total, ls=len(srcs), nav=nav)
-
-html += market_html
-html += fx_html
-html += wh
-html += hw_html
-html += news_html
-
-html += '''
-<div class="se" id="s"><div class="sh"><span class="st">📡 来源</span></div><div class="srcs">{srcs}</div></div>
+%s
+%s
+%s
+%s
+%s
+<div class="se" id="s"><div class="sh"><span class="st">📡 来源</span></div><div class="srcs">%s</div></div>
 <footer>📊 每2小时更新 · 投资·宏观·热点·科技·机会</footer>
 </div>
 <div id="bt" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</div>
@@ -219,13 +225,14 @@ html += '''
 var bt=document.getElementById('bt');
 window.addEventListener('scroll',function(){bt.style.opacity=window.scrollY>200?1:0});
 document.querySelectorAll('nav a').forEach(function(a){a.addEventListener('click',function(e){e.preventDefault();var t=document.querySelector(this.getAttribute('href'));t&&t.scrollIntoView({behavior:'smooth',block:'start'})})});
-var ti=0,tt=['📊 每日价值资讯','📰 {total}条','🔍 {ls}源'];
-setInterval(function(){document.title=tt[ti%3];ti++},4000);
+var ti=0,tt=['📊 每日价值资讯','📰 %d条','🔍 %d源'];
+setInterval(function(){document.title=tt[ti%%3];ti++},4000);
 </script>
 </body>
-</html>'''.format(srcs=src_html, total=total, ls=len(srcs))
+</html>''' % (dc, gr, total, len(srcs), nav, market_html, fx_html, wh, hw_html, news_html, src_html, total, len(srcs))
 
+os.makedirs('_site', exist_ok=True)
 with open('_site/index.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
-print('=== {total}条 · {ls}个来源 · {sz}b ==='.format(total=total, ls=len(srcs), sz=len(html)))
+print('DONE: %d news, %d sources, %d bytes' % (total, len(srcs), len(html)))
