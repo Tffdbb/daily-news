@@ -293,6 +293,77 @@ def s23():
             for i in links if '人民' not in i['t'] and '健康' not in i['t']]
 
 
+
+def s24():
+    """今日头条热点"""
+    html = fetch('https://www.toutiao.com/')
+    items = []
+    seen = set()
+    # Try several patterns
+    for pat in [r'"title":"([^"]{6,50})"', r'"abstract":"([^"]{6,50})"', r'"word":"([^"]{6,50})"']:
+        for m in re.finditer(pat, html):
+            if len(items) >= 5:
+                break
+            t = m.group(1).strip()
+            if len(t) > 5 and t[:6] not in seen and '{{' not in t and 'var' not in t:
+                seen.add(t[:6])
+                items.append(t)
+        if len(items) >= 3:
+            break
+    return [{'t': t[:40], 's': '热点话题', 'src': '今日头条', 'u': 'https://www.toutiao.com/'} for t in items]
+
+
+
+def s25():
+    """东方财富"""
+    html = fetch('https://www.eastmoney.com/')
+    links = extract_links(html, r'<a[^>]*href="(https?://[^"]*eastmoney.com[^"]*)"[^>]*>([^<]{6,50})</a>', 6, 5)
+    return [{'t': i['t'][:50], 's': '财经资讯', 'src': '东方财富', 'u': i['u']}
+            for i in links if any(k in i['t'] for k in ['股','涨','跌','亿','元','A股','市场','投资','基金','行情','板块'])]
+
+
+
+def s26():
+    """雪球"""
+    html = fetch('https://xueqiu.com/')
+    links = extract_links(html, r'<a[^>]*href="(https?://xueqiu.com/d+/d+[^"]*)"[^>]*>([^<]{6,50})</a>', 6, 4)
+    return [{'t': i['t'][:50], 's': '投资者社区', 'src': '雪球', 'u': i['u']} for i in links]
+
+
+
+def s27():
+    """环球网"""
+    html = fetch('https://www.huanqiu.com/')
+    links = extract_links(html, r'<a[^>]*href="(https?://[^"]*huanqiu.com[^"]*)"[^>]*>([^<]{8,50})</a>', 8, 4)
+    return [{'t': i['t'][:50], 's': '国际视野', 'src': '环球网', 'u': i['u']} for i in links]
+
+
+
+def s28():
+    """观察者网"""
+    html = fetch('https://www.guancha.cn/')
+    links = extract_links(html, r'<a[^>]*href="(https?://www.guancha.cn/[^"]+)"[^>]*>([^<]{8,50})</a>', 8, 4)
+    return [{'t': i['t'][:50], 's': '深度观察', 'src': '观察者网', 'u': i['u']} for i in links]
+
+
+
+def s29():
+    """新浪娱乐"""
+    html = fetch('https://ent.sina.com.cn/')
+    links = extract_links(html, r'<a[^>]*href="(https?://ent.sina.com.cn[^"]+)"[^>]*>([^<]{8,50})</a>', 8, 4)
+    return [{'t': i['t'][:50], 's': '文娱资讯', 'src': '新浪娱乐', 'u': i['u']}
+            for i in links if '更多' not in i['t'] and '频道' not in i['t']]
+
+
+
+def s30():
+    """网易体育"""
+    html = fetch('https://sports.163.com/')
+    links = extract_links(html, r'<a[^>]*href="(https?://sports.163.com[^"]+)"[^>]*>([^<]{8,50})</a>', 8, 4)
+    return [{'t': i['t'][:50], 's': '体育赛事', 'src': '网易体育', 'u': i['u']}
+            for i in links if '更多' not in i['t'] and '直播' not in i['t']]
+
+
 # ====== 股票 & 汇率 ======
 
 def get_stocks():
@@ -343,9 +414,11 @@ if __name__ == '__main__':
         ('每经', s13), ('证券时报', s14), ('中证报', s15), ('IT之家', s16),
         ('百度', s17), ('澎湃新闻', s18), ('36氪', s19), ('Donews', s20),
         ('新浪体育', s21), ('虎嗅', s22), ('人民健康', s23),
+        ('今日头条', s24), ('东方财富', s25), ('雪球', s26),
+        ('环球网', s27), ('观察者网', s28), ('新浪娱乐', s29), ('网易体育', s30),
     ]
 
-    labels = [s[0] for s in sources]
+    labels = ['同花顺','华尔街见闻','财联社','第一财经','网易','新浪财经','新华网','人民网','中国新闻网','央视新闻','凤凰网','财新网','每经','证券时报','中证报','IT之家','百度','澎湃新闻','36氪','Donews','新浪体育','虎嗅','人民健康','今日头条','东方财富','雪球','环球网','观察者网','新浪娱乐','网易体育'] for s in sources]
     all_news = []
     cnt = {}
 
