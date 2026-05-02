@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>每日全球资讯早报 · Tffdbb</title>
-    <meta name="description" content="每日全球资讯早报 - 实时行情、全球股市、汇率、加密货币、天气">
+    <meta name="description" content="每日全球资讯早报 - 实时行情、全球股市、汇率、天气">
     <style>
         :root {
             --bg: #0c0f1a; --bg2: #111624; --card: #1a1f2e;
@@ -33,8 +33,6 @@
         .topbar .nav { display: flex; gap: 4px; flex-wrap: wrap; }
         .topbar .nav a { color: var(--muted); text-decoration: none; font-size: 12px; padding: 5px 10px; border-radius: 6px; transition: 0.2s; white-space: nowrap; }
         .topbar .nav a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
-        .topbar .live-indicator { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); }
-        .topbar .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
         .container { max-width: 960px; margin: 0 auto; padding: 0 20px 20px; }
@@ -126,13 +124,6 @@
         @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
         /* Crypto specific */
-        .crypto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
-        .crypto-item { background: rgba(12,15,26,0.5); border-radius: 10px; padding: 12px; text-align: center; border: 1px solid transparent; transition: 0.2s; }
-        .crypto-item:hover { border-color: var(--border); }
-        .crypto-item .name { font-size: 11px; color: var(--muted); }
-        .crypto-item .symbol { font-size: 10px; color: var(--muted2); }
-        .crypto-item .price { font-size: 16px; font-weight: 600; margin: 2px 0; }
-        .crypto-item .change24h { font-size: 11px; }
 
         footer { text-align: center; padding: 30px 20px 20px; color: var(--muted2); font-size: 11px; border-top: 1px solid var(--border); margin-top: 10px; }
         footer a { color: var(--accent-light); text-decoration: none; }
@@ -144,7 +135,6 @@
             .section { padding: 14px 16px; border-radius: 12px; }
             .market-grid { grid-template-columns: repeat(2,1fr); }
             .fx-grid { grid-template-columns: repeat(2,1fr); }
-            .crypto-grid { grid-template-columns: repeat(2,1fr); }
             .topbar { padding: 0 10px; }
             .topbar .nav a { font-size: 10px; padding: 4px 6px; }
             .stats-row { grid-template-columns: repeat(2,1fr); }
@@ -162,11 +152,10 @@
         <a href="#" onclick="scrollToSection('tech')">科技</a>
         <a href="#" onclick="scrollToSection('china')">市场</a>
         <a href="#" onclick="scrollToSection('market')">行情</a>
-        <a href="#" onclick="scrollToSection('crypto')">加密</a>
+        <a href="#" onclick="
         <a href="#" onclick="scrollToSection('finance')">财经</a><a href="#" onclick="scrollToSection('sports')">体育</a><a href="#" onclick="scrollToSection('entertain')">娱乐</a><a href="#" onclick="scrollToSection('health')">健康</a><a href="#" onclick="scrollToSection('weather')">天气</a>
         <a href="https://github.com/Tffdbb/daily-news" target="_blank">GitHub</a>
     </div>
-    <div class="live-indicator"><span class="live-dot"></span>实时</div>
 </div>
 
 <div class="container">
@@ -178,7 +167,7 @@
         </div>
         <div class="quick-nav">
             <a href="#" onclick="scrollToSection('market')">📊 全球股市</a>
-            <a href="#" onclick="scrollToSection('crypto')">₿ 加密货币</a>
+            <a href="#" onclick="
             <a href="#" onclick="scrollToSection('forex')">💱 汇率</a>
             <a href="#" onclick="scrollToSection('world')">🌍 新闻</a>
             <a href="#" onclick="scrollToSection('finance')">💰 财经</a><a href="#" onclick="scrollToSection('sports')">⚽ 体育</a><a href="#" onclick="scrollToSection('entertain')">🎬 娱乐</a><a href="#" onclick="scrollToSection('weather')">🌤️ 天气</a>
@@ -205,7 +194,7 @@ const data = {
             items: [
                 { t: "伊朗外长称仍愿同美国进行外交对话", s: "伊朗外交部长阿拉格齐表示，尽管局势紧张，伊朗仍愿通过对话解决分歧。", src: "财联社", url: "https://www.baidu.com/s?wd=伊朗外长+阿拉格齐+外交对话+2026" },
                 { t: "古巴举行五一劳动节集会，50余万民众呼吁保卫祖国", s: "恰逢美国宣布加大制裁，古巴民众以大规模集会表达对国家主权的坚定捍卫。", src: "CCTV国际时讯", url: "https://www.baidu.com/s?wd=古巴+五一集会+50万+2026" },
-                { t: "特朗普称美国已出售1亿桶委内瑞拉石油，计划翻倍", s: "这些石油被运往得克萨斯州进行加工，计划在未来一个月内将数量翻倍。", src: "中国新闻网", url: "https://www.baidu.com/s?wd=特朗普+委内瑞拉石油+1亿桶+2026" },
+                { t: "特朗普称美国已出售1亿桶委内瑞拉石油，计划翻倍", s: "这些石油被运往得克萨斯州进行加工，计划在未来一个月内将数量翻倍。", src: "中国新闻网", url: "https://www.baidu.com/s?wd=特朗普+委内瑞拉���油+1亿桶+2026" },
                 { t: "日本央行前行长黑田东彦：2%通胀目标已实现", s: "黑田东彦表示日本不需要财政扩张或货币宽松，央行暂不加息是正确的决定。", src: "财联社", url: "https://www.baidu.com/s?wd=黑田东彦+通胀目标+已实现+2026" },
                 { t: "特朗普扩大对古巴制裁，派航母赴古巴海岸", s: "5月1日签署行政命令，将\"林肯\"号航母部署至古巴海岸。", src: "央视新闻", url: "https://www.baidu.com/s?wd=特朗普+扩大制裁+古巴+林肯号航母+2026" }
             ]
@@ -224,7 +213,7 @@ const data = {
                 { t: "五一假期首日高速公路充电量同比增长55.6%", s: "充电量达2303万千瓦时，服务次数超94.63万次，刷新历史记录。", src: "财联社", url: "https://www.baidu.com/s?wd=五一+高速充电量+同比+55.6%+2026" },
                 { t: "5月1日铁路发送旅客2484万人次创历史新高", s: "5月2日预计发送1970万人次，累计发售五一车票11718万张。", src: "人民日报", url: "https://www.baidu.com/s?wd=铁路+发送旅客+2484万+创历史新高+2026" },
                 { t: "上海迎来首票非洲20国零关税商品", s: "516吨埃及鲜橙通过海运入境，在上海外高桥港区通关放行。", src: "新华社", url: "https://www.baidu.com/s?wd=非洲+零关税+上海+鲜橙+2026" },
-                { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "新浪财经", url: "https://www.baidu.com/s?wd=巴西石油+对美出口+零+中国+2026" },
+                { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "新浪财经", url: "https://www.baidu.com/s?wd=巴西石油+对��出口+零+中国+2026" },
                 { t: "百亿私募一季报调仓换股曝光", s: "高毅邓晓峰减持京东方A、TCL科技；冯柳减持海康加仓瑞丰新材。", src: "中国基金报", url: "https://www.baidu.com/s?wd=百亿私募+一季报+调仓+邓晓峰+冯柳+2026" }
             ]
         }
@@ -286,16 +275,6 @@ const data = {
     quote: { text: "唯一真正聪明的人是那些知道自己一无所知的人。", author: "—— 苏格拉底" }
 };
 
-// ====== Crypto IDs for CoinGecko ======
-const cryptoIds = [
-    { id: "bitcoin", name: "BTC", icon: "₿" },
-    { id: "ethereum", name: "ETH", icon: "♦" },
-    { id: "solana", name: "SOL", icon: "◎" },
-    { id: "ripple", name: "XRP", icon: "✕" },
-    { id: "dogecoin", name: "DOGE", icon: "Ð" },
-    { id: "cardano", name: "ADA", icon: "▲" }
-];
-
 const fxPairs = [
     { pair: "美元/人民币", from: "USD", to: "CNY" },
     { pair: "欧元/人民币", from: "EUR", to: "CNY" },
@@ -345,20 +324,9 @@ function render() {
     '</div></div>';
 
     // 3. Crypto — static fallback + background refresh
-    html += '<div class="section" id="sec-crypto"><div class="section-header"><div class="left"><span style="font-size:18px;">₿</span><h2>加密货币 · 实时 <span class="tag" style="background:rgba(6,182,212,0.12);color:var(--cyan);font-size:10px;">自动刷新</span></h2></div><span class="refresh-btn" onclick="loadCrypto()">🔄</span></div><div class="crypto-grid" id="cryptoGrid"></div>'+
-      '<div style="margin-top:10px;font-size:11px;color:var(--muted2);text-align:center;">数据由 CoinGecko 提供 · 每60秒自动刷新</div></div>';
-
-    // 4. Forex — static fallback + background refresh
-    html += '<div class="section" id="sec-forex"><div class="section-header"><div class="left"><span style="font-size:18px;">💱</span><h2>外汇汇率 · 实时 <span class="tag" style="background:rgba(6,182,212,0.12);color:var(--cyan);font-size:10px;">自动刷新</span></h2></div><span class="refresh-btn" onclick="loadForex()">🔄</span></div><div class="fx-grid" id="fxGrid"></div>'+
-      '<div style="margin-top:10px;font-size:11px;color:var(--muted2);text-align:center;">数据由 ExchangeRate-API 提供</div></div>';
-
-    // 5. Weather
-    const w = data.weather;
-    html += '<div class="section" id="sec-weather"><div class="section-header"><div class="left"><span style="font-size:18px;">🌤️</span><h2>天气预报 · '+w.city+'</h2></div></div>';
-    html += '<div class="weather-main"><div class="icon-temp"><span style="font-size:42px;">'+w.current.icon+'</span><span class="big-temp">'+w.current.temp+'</span></div><div><div class="city-label">'+w.city+' · '+w.current.desc+'</div><div class="desc">东南风6km/h·湿度91%·体感偏凉</div></div></div>';
     html += '<div class="weather-3day">';
     for (const f of w.forecast) html += '<div class="weather-day"><div class="day-name">'+f.day+'</div><div class="day-icon">'+f.icon+'</div><div class="day-temp">'+f.temp+'</div><div class="day-desc">'+f.desc+'</div></div>';
-    html += '</div><div class="highlight-box">💡 泗阳今天有小雨带伞，后天(5/4)大晴天最高25°C适合出游</div></div>';
+    html += '</div><div class="highlight-box">💡 泗阳今天有小雨带伞，后天(5/4)大��天最高25°C适合出游</div></div>';
 
     // 6. Quote
     html += '<div class="section"><div class="quote-box"><div class="quote-text">"'+data.quote.text+'"</div><div class="quote-author">'+data.quote.author+'</div></div></div>';
@@ -367,30 +335,7 @@ function render() {
 
     // Defer live data: load after page fully rendered
     document.getElementById("liveStatus").textContent = "✅ 今日已更新";
-    setTimeout(() => { loadCrypto(); }, 500);
     setTimeout(() => { loadForex(); }, 1000);
-}
-
-// ====== Crypto ======
-async function loadCrypto() {
-    try {
-        const ids = cryptoIds.map(c => c.id).join(",");
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids='+ids+'&vs_currencies=usd&include_24hr_change=true');
-        if (res.ok) {
-            const json = await res.json();
-            let h = "";
-            for (const c of cryptoIds) {
-                const d = json[c.id];
-                if (d) {
-                    const chg = d.usd_24h_change || 0;
-                    const cls = chg > 0 ? "up" : (chg < 0 ? "down" : "flat");
-                    h += '<div class="crypto-item"><div class="name">'+c.icon+' '+c.name+' <span class="symbol">'+c.id.toUpperCase()+'</span></div><div class="price">$'+d.usd.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div><div class="change24h '+cls+'">24h: '+(chg>0?'+':'')+chg.toFixed(2)+'%</div></div>';
-                }
-            }
-            const el = document.getElementById("cryptoGrid");
-            if (el) el.innerHTML = h;
-        }
-    } catch(e) {}
 }
 
 // ====== Forex ======
@@ -432,7 +377,6 @@ function scrollToSection(id) {
 render();
 
 // Auto refresh every 60s
-setInterval(() => { loadCrypto(); }, 120000);
 </script>
 </body>
 </html>
