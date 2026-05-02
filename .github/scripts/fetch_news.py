@@ -10,19 +10,19 @@ try:
     CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
 except: pass
 
-def curl_fetch(url, timeout_sec=9):
+def curl_fetch(url, timeout_sec=6):
     try:
-        r = subprocess.run(['timeout','10','curl','-sL',url,'-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','--connect-timeout','8','--max-time',str(timeout_sec),'-o','-','-w',''], capture_output=True, timeout=12, text=True)
+        r = subprocess.run(['timeout','8','curl','-sL',url,'-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','--connect-timeout','5','--max-time',str(timeout_sec),'-o','-','-w',''], capture_output=True, timeout=10, text=True)
         return r.stdout
     except: return ''
 
-def urlopen(url, timeout=10):
+def urlopen(url, timeout=7):
     try:
         r = __import__('urllib.request', fromlist=['urlopen']).urlopen(__import__('urllib.request', fromlist=['Request']).Request(url, headers={'User-Agent':'Mozilla/5.0'}), timeout=timeout, context=CTX)
         return r.read().decode('utf-8','replace')
     except: return ''
 
-def f_either(url, timeout=9):
+def f_either(url, timeout=6):
     h = curl_fetch(url, timeout)
     if len(h) < 100:
         h2 = urlopen(url, timeout+1)
@@ -195,18 +195,18 @@ def main():
     sources = [s1,s2,s3,s4,s5,s6,s7,s8,s9,s10,s11,s12,s13,s14,s15,s16,s17,s18,s19,s20,s21,s22,s23,s24,s25,s26,s27,s28,s29,s30,s31,s32,s33,s34,s35,s36]
     news = []
     
-    # 并行采集：12线程 + 90秒总超时
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as ex:
+    # 并行采集：16线程 + 60秒总超时
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
         futs = {ex.submit(_run_src, fn): i for i, fn in enumerate(sources)}
         try:
-            for f in concurrent.futures.as_completed(futs, timeout=90):
+            for f in concurrent.futures.as_completed(futs, timeout=60):
                 try:
                     items = f.result(timeout=3)
                     if items: news.extend(items)
                 except: pass
         except concurrent.futures.TimeoutError:
             for f in futs: f.cancel()
-            print('PARALLEL_TIMEOUT: some sources did not finish in 90s')
+            print('PARALLEL_TIMEOUT: some sources did not finish in 60s')
     
     seen=set();deduped=[]
     for n in news:
