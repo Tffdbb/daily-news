@@ -316,6 +316,17 @@ const data = {
                 { t: "上海迎来首票非洲20国零关税商品", s: "516吨埃及鲜橙通过海运入境，在上海外高桥港区海关通关放行。", src: "新华社" },
                 { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "新浪财经" },
                 { t: "百亿私募一季报调仓换股曝光", s: "高毅邓晓峰减持京东方A、TCL科技；冯柳减持海康威视加仓瑞丰新材。", src: "中国基金报" }
+        ]
+    },
+    {
+        id: "life",
+        title: "生活参考",
+        icon: "🌤️",
+        tags: ["泗阳天气","出行提示"],
+        items: [
+            { t: "泗阳今日：🌧️ 小雨 15°C", s: "东南风6km/h，湿度91%，体感偏凉。出门记得带伞。", src: "wttr.in" },
+            { t: "泗阳明天(5/3)：🌫️ 雾转🌦️ 阵雨 11~17°C", s: "早晨有雾，能见度低，下午有阵雨+风，注意出行安全。", src: "wttr.in" },
+            { t: "泗阳后天(5/4)：☀️ 晴 10~25°C", s: "大晴天！适合出游洗晒，温差大注意添衣。", src: "wttr.in" }
             ]
         },
         {
@@ -338,7 +349,7 @@ const data = {
             ]
         }
     ],
-    weather: { city: "北京", temp: "22°C", desc: "晴，空气质量良" }
+    weather: { city: "泗阳", temp: "15°C", desc: "🌧️ 小雨，出门带伞" }
 };
 
 // 日期
@@ -404,7 +415,7 @@ for (let si = 0; si < data.sections.length; si++) {
 // Weather widget (attach to last section)
 html += '<div class="section"><div class="section-title"><div class="left"><span>🌤️</span><h2>今日天气</h2></div></div>';
 html += '<div class="weather-widget"><div><div class="city">'+data.weather.city+'</div><div class="desc">'+data.weather.desc+'</div></div><div class="temp">'+data.weather.temp+'</div></div>';
-html += '<div class="highlight-box">💡 五一假期出行高峰，注意交通路况和天气变化。北京今日适合出游。</div>';
+html += '<div class="highlight-box">💡 五一假期出行高峰，泗阳今日有小雨，出门记得带伞。后天(5/4)大晴天，适合出游！</div>';
 html += '</div>';
 
 document.getElementById("newsContent").innerHTML = html;
