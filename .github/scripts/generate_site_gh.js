@@ -237,15 +237,13 @@ async function s15() {
 async function s16() {
   try {
     const h = await fetch('https://www.ithome.com/');
-    const re2 = /<a[^>]*href="(\/\d+\/\d+\/\d+\.htm)"[^>]*>/g; const urls = []; let m2;
-    while ((m2 = re2.exec(h)) && urls.length < 3) urls.push(m2[1]);
-    const seen = new Set(), items = [];
-    const re = /<a[^>]*href="\/\d+\/\d+\/\d+\.htm"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    const items = []; const seen = new Set();
+    const re = /<li>[\s\S]*?<a[^>]*href="(\/\d+\/\d+\/\d+\.htm)"[^>]*>([^<]{8,50})<\/a>[\s\S]*?<\/li>/g; let m;
     while ((m = re.exec(h)) && items.length < 3) {
-      const t = m[1].trim();
-      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push(t); }
+      const t = m[2].trim();
+      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
     }
-    return items.map((t,i) => ({t: t.substring(0,50), s:'科技资讯', src:'IT之家', u: urls[i] ? 'https://www.ithome.com'+urls[i] : 'https://www.ithome.com/'}));
+    return items.map(i => ({t:i.t, s:'科技资讯', src:'IT之家', u: 'https://www.ithome.com' + i.u}));
   } catch(e) { return []; }
 }
 
@@ -254,7 +252,8 @@ async function s17() {
   try {
     const h = await fetch('https://top.baidu.com/board?tab=realtime');
     const items = [];
-    for (const re of [/data-title="([^"]+)"/g, /"word":"([^"]+)"/g]) {
+    const reList = [/data-title="([^"]+)"/g, /"word":"([^"]+)"/g];
+    for (const re of reList) {
       const seen = new Set(); let m;
       while ((m = re.exec(h)) && items.length < 6) {
         const t = m[1].trim();
@@ -270,10 +269,13 @@ async function s17() {
 async function s18() {
   try {
     const h = await fetch('https://www.huxiu.com/');
-    const items = extract(h, '<a[^>]*href="/article/\\d+\\.html"[^>]*>([^<]{6,45})<\\/a>', 6, 3);
-    const re = /<a[^>]*href="(\/article\/\d+\.html)"[^>]*>/g; const urls = []; let m;
-    while ((m = re.exec(h)) && urls.length < 3) urls.push(m[1]);
-    return items.map((t,i) => ({t: t.substring(0,45), s:'深度商业', src:'虎嗅', u: urls[i] ? 'https://www.huxiu.com'+urls[i] : 'https://www.huxiu.com/'}));
+    const items = []; const seen = new Set();
+    const re = /<a[^>]*href="(\/article\/\d+\.html)"[^>]*>([^<]{6,45})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (t.length > 6 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,45), u: m[1]}); }
+    }
+    return items.map(i => ({t:i.t, s:'深度商业', src:'虎嗅', u: 'https://www.huxiu.com' + i.u}));
   } catch(e) { return []; }
 }
 
@@ -323,9 +325,9 @@ function classify(items) {
     if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌/.test(tt)) s.push(item);
     else if (/AI|人工智能|科技|5G|6G|芯片|算力|软件|华为|数字|互联网|大模型|GPT|元宇宙|量子|卫星|航天|火箭|SpaceX|特斯拉|苹果|微软|谷歌|OpenAI|专利|算法|数据|区块链|自动化|智能|机器人|电动车|光伏|新能源|储能|电脑|手机|IT/.test(tt)) t.push(item);
     else if (/电影|票房|音乐|演唱会|综艺|游戏|明星|导演|电视剧|Netflix|迪士尼|B站|抖音|快手|舞台|广告|视频|直播|演出/.test(tt)) e.push(item);
-    else if (/健康|养生|运动|饮食|睡眠|药|医院|疫苗|新冠|中医|营养|健身|减肥|体检|医保|医疗/.test(tt)) h.push(item);
+    else if (/健康|养生|运动|饮食|睡眠|药|医院|疫苗|新冠|中医|营养|健身|减肥|体检|医保|医疗|疾病|诊断|治疗|患者/.test(tt)) h.push(item);
     else if (/A股|沪指|深指|北向|证监会|注册制|分红|涨停|券商|基金|私募|公募|科创板|创业板|上证|深证|沪深|北交所|股份|股票|上市|退市|财报|业绩|净利润|营收|利润|亏损|同比|增长|股东/.test(tt)) c.push(item);
-    else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI|关税/.test(tt)) f.push(item);
+    else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI|关税|美股|标普|纳斯达克|道指/.test(tt)) f.push(item);
     else if (/伊朗|古巴|特朗普|制裁|美国|德国|北约|中东|国际|石油|非盟|G20|以军|巴以|欧盟|俄罗斯|乌克兰|外交|撤军|欧洲|英国|法国|日本|韩国|朝鲜|印度|联合国|世贸|WTO|难民|移民|空袭|会谈|峰会|大使|外长|总统|国会|参议院|地震|海啸|间谍|爆炸|袭击|逮捕|战争/.test(tt)) w.push(item);
     else if (/公积金|贷款|房地产|楼市|房价|租房|消费|购物|旅游|五一|假期|高速|公路|出行/.test(tt)) c.push(item);
     else if (/习近平|总书记|国务院|发改委|政策|政府|报告|代表|委员|两会|部署|战略/.test(tt)) c.push(item);
@@ -440,43 +442,43 @@ async function main() {
     });
   });
 
-  console.log('����:');
+  console.log('分类:');
   Object.entries(classified).forEach(([k,v])=>{
     if(v.length) console.log('  '+k+':'+v.length);
   });
 
   const sections = [
-    {id:'world',title:'����Ҫ��',icon:'??',items:classified.world.length?classified.world:[{t:'���޹�������',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'tech',title:'�Ƽ���̬',icon:'??',items:classified.tech.length?classified.tech:[{t:'���޿Ƽ���Ѷ',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'china',title:'A��/����',icon:'??',items:classified.china.length?classified.china:[{t:'���������Ѷ',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'finance',title:'�ƾ�����',icon:'??',items:classified.finance.length?classified.finance:[{t:'���޲ƾ���Ѷ',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'sports',title:'��������',icon:'?',items:classified.sports.length?classified.sports:[{t:'����������̬',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'entertain',title:'�����ȵ�',icon:'??',items:classified.entertain.length?classified.entertain:[{t:'����������Ѷ',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'health',title:'��������',icon:'??',items:classified.health.length?classified.health:[{t:'���޽�����Ѷ',s:'',src:'ϵͳ',u:'#'}]},
-    {id:'today',title:'��ʷ�ϵĽ���',icon:'??',items:[
-      {t:'1519�� �� ���������',s:'',src:'��ʷ',u:'#'},
-      {t:'1957�� �� ��������',s:'',src:'��ʷ',u:'#'},
-      {t:'2003�� �� �й������״λ�����',s:'',src:'��ʷ',u:'#'}
+    {id:'world',title:'国际要闻',icon:'🌍',items:classified.world.length?classified.world:[{t:'暂无国际新闻',s:'',src:'系统',u:'#'}]},
+    {id:'tech',title:'科技动态',icon:'💻',items:classified.tech.length?classified.tech:[{t:'暂无科技资讯',s:'',src:'系统',u:'#'}]},
+    {id:'china',title:'A股/民生',icon:'📈',items:classified.china.length?classified.china:[{t:'暂无相关资讯',s:'',src:'系统',u:'#'}]},
+    {id:'finance',title:'财经焦点',icon:'💰',items:classified.finance.length?classified.finance:[{t:'暂无财经资讯',s:'',src:'系统',u:'#'}]},
+    {id:'sports',title:'体育赛事',icon:'⚽',items:classified.sports.length?classified.sports:[{t:'暂无体育动态',s:'',src:'系统',u:'#'}]},
+    {id:'entertain',title:'文娱热点',icon:'🎬',items:classified.entertain.length?classified.entertain:[{t:'暂无文娱资讯',s:'',src:'系统',u:'#'}]},
+    {id:'health',title:'健康生活',icon:'💪',items:classified.health.length?classified.health:[{t:'暂无健康资讯',s:'',src:'系统',u:'#'}]},
+    {id:'today',title:'历史上的今天',icon:'📅',items:[
+      {t:'1519年 — 达·芬奇逝世',s:'',src:'历史',u:'#'},
+      {t:'1957年 — 麦卡锡逝世',s:'',src:'历史',u:'#'},
+      {t:'2003年 — 中国海军首次环球航行',s:'',src:'历史',u:'#'}
     ]}
   ];
 
   const weather = [
-    {d:'����',i:'???',t:'14~17��C',c:'С��ת��'},
-    {d:'����',i:'???',t:'11~17��C',c:'��ת����'},
-    {d:'����',i:'??',t:'10~25��C',c:'��'}
+    {d:'今天',i:'🌧️',t:'14~17°C',c:'小雨转阴'},
+    {d:'明天',i:'🌫️',t:'11~17°C',c:'雾转阵雨'},
+    {d:'后天',i:'☀️',t:'10~25°C',c:'晴'}
   ];
 
   const stats = {
     sources: Object.keys(cnt).length,
-    names: Object.keys(cnt).join(' �� ')
+    names: Object.keys(cnt).join(' · ')
   };
 
   const html = buildPage(date, sections, stocks, weather, fx, stats);
 
   const outPath = process.env.GITHUB_OUTPUT ? (process.env.GITHUB_WORKSPACE || '.') + '/index.html' : 'G:\\claw1232\\portable\\data\\.openclaw\\canvas\\daily-news\\index.html';
   fs.writeFileSync(outPath, html, 'utf8');
-  console.log('\nд��: ' + outPath + ' (' + html.length + ' bytes)');
-  console.log('=== ��� ===');
+  console.log('\n写入: ' + outPath + ' (' + html.length + ' bytes)');
+  console.log('=== 完成 ===');
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
