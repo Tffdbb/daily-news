@@ -30,7 +30,7 @@ function extract(html, pat, minLen, maxCount) {
 async function s1() {
   try {
     const j = JSON.parse(await fetch('https://news.10jqka.com.cn/tapp/news/push/stock?type=all'));
-    return (j.data && j.data.list || []).filter(i => i.title && i.title.length > 4).slice(0, 10).map(i => ({
+    return (j.data && j.data.list || []).filter(i => i.title && i.title.length > 4).slice(0, 15).map(i => ({
       t: i.title.trim().substring(0,55), s: (i.digest||'').replace(/<[^>]+>/g,'').trim().substring(0,80)||'同花顺快讯',
       src: '同花顺', u: 'https://www.10jqka.com.cn/'
     }));
@@ -40,7 +40,7 @@ async function s1() {
 // 2. 华尔街见闻
 async function s2() {
   try {
-    const d = JSON.parse(await fetch('https://api.wallstreetcn.com/apiv1/content/lives?channel=global-channel&limit=8'));
+    const d = JSON.parse(await fetch('https://api.wallstreetcn.com/apiv1/content/lives?channel=global-channel&limit=10'));
     if (d.data && d.data.items) return d.data.items.filter(i => i.title || i.content_text).map(i => ({
       t: (i.title || i.content_text||'').replace(/<[^>]+>/g,'').trim().substring(0,55), s: '见闻快讯', src: '华尔街见闻',
       u: i.uri ? 'https://wallstreetcn.com'+i.uri : 'https://wallstreetcn.com/'
@@ -236,18 +236,26 @@ async function s15() {
 // 16. IT之家
 async function s16() {
   try {
-    const h = await fetch('https://www.ithome.com/');
+    const h = await fetch('https://www.ithome.com/rss/');
     const items = []; const seen = new Set();
-    const re = /<li>[\s\S]*?<a[^>]*href="(\/\d+\/\d+\/\d+\.htm)"[^>]*>([^<]{8,50})<\/a>[\s\S]*?<\/li>/g; let m;
-    while ((m = re.exec(h)) && items.length < 3) {
-      const t = m[2].trim();
-      if (!seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]}); }
+    const re1 = /<title><!\[CDATA\[([^\]]+)\]\]><\/title>/g; let m;
+    while ((m = re1.exec(h)) && items.length < 4) {
+      const t = m[1].trim();
+      if (t.length > 4 && t !== 'IT之家' && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push(t); }
     }
-    return items.map(i => ({t:i.t, s:'科技资讯', src:'IT之家', u: 'https://www.ithome.com' + i.u}));
+    if (items.length < 2) {
+      const re2 = /<title>([^<]+)<\/title>/g;
+      let first = true;
+      while ((m = re2.exec(h)) && items.length < 4) {
+        if (first) { first = false; continue; }
+        const t = m[1].trim();
+        if (t.length > 4 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push(t); }
+      }
+    }
+    return items.map(t => ({t:t.substring(0,50), s:'科技资讯', src:'IT之家', u:'https://www.ithome.com/'}));
   } catch(e) { return []; }
 }
-
-// 17. 百度热搜
+// 17. 17. 百度热搜
 async function s17() {
   try {
     const h = await fetch('https://top.baidu.com/board?tab=realtime');
@@ -268,27 +276,38 @@ async function s17() {
 // 18. 虎嗅
 async function s18() {
   try {
-    const h = await fetch('https://www.huxiu.com/');
-    const items = []; const seen = new Set();
-    const re = /<a[^>]*href="(\/article\/\d+\.html)"[^>]*>([^<]{6,45})<\/a>/g; let m;
-    while ((m = re.exec(h)) && items.length < 3) {
+    const h = await fetch('https://www.thepaper.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/www\.thepaper\.cn[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
       const t = m[2].trim();
-      if (t.length > 6 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t: t.substring(0,45), u: m[1]}); }
+      if (t.length > 8 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push({t:t.substring(0,50), u:m[1]}); }
     }
-    return items.map(i => ({t:i.t, s:'深度商业', src:'虎嗅', u: 'https://www.huxiu.com' + i.u}));
+    return items.map(i => ({t:i.t, s:'深度报道', src:'澎湃新闻', u:i.u}));
   } catch(e) { return []; }
 }
-
-// 19. 品玩
+// 19. 19. 品玩
 async function s19() {
   try {
-    const h = await fetch('https://www.pingwest.com/');
-    const items = extract(h, '"title":"([^"]+)"', 8, 3);
-    return items.map(t => ({t: t.substring(0,45), s:'科技观察', src:'品玩', u:'https://www.pingwest.com/'}));
+    const h = await fetch('https://36kr.com/');
+    const seen = new Set(), items = [];
+    const re = /"title":"([^"]{6,50})"/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[1].trim();
+      if (t.length > 6 && !seen.has(t.substring(0,6)) && !t.includes('36氪') && !t.includes('创业') && !t.includes('{{')) {
+        seen.add(t.substring(0,6)); items.push(t);
+      }
+    }
+    if (items.length < 2) {
+      const re2 = /"widgetTitle":"([^"]{6,50})"/g;
+      while ((m = re2.exec(h)) && items.length < 4) {
+        const t = m[1].trim();
+        if (t.length > 6 && !seen.has(t.substring(0,6))) { seen.add(t.substring(0,6)); items.push(t); }
+      }
+    }
+    return items.map(t => ({t:t.substring(0,45), s:'科技商业', src:'36氪', u:'https://36kr.com/'}));
   } catch(e) { return []; }
 }
-
-// 20. Donews
 async function s20() {
   try {
     const h = await fetch('https://www.donews.com/');
@@ -302,7 +321,54 @@ async function s20() {
   } catch(e) { return []; }
 }
 
-// ====== Stocks & Forex ======
+// 21. 新浪体育
+async function s21() {
+  try {
+    const h = await fetch('https://sports.sina.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/sports\.sina\.com\.cn[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 4) {
+      const t = m[2].trim();
+      if (t.length > 8 && !seen.has(t.substring(0,8)) && !t.includes('更多') && !t.includes('频道')) {
+        seen.add(t.substring(0,8)); items.push({t: t.substring(0,50), u: m[1]});
+      }
+    }
+    return items.map(i => ({t:i.t, s:'体育资讯', src:'新浪体育', u:i.u}));
+  } catch(e) { return []; }
+}
+
+
+// 23. 大众健康
+async function s23() {
+  try {
+    const h = await fetch('https://health.people.com.cn/');
+    const seen = new Set(), items = [];
+    const re = /<a[^>]*href="(https?:\/\/health\.people\.com\.cn[^"]+)"[^>]*>([^<]{8,50})<\/a>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[2].trim();
+      if (t.length > 8 && !seen.has(t.substring(0,8)) && !t.includes('人民') && !t.includes('健康')) {
+        seen.add(t.substring(0,8)); items.push({t:t.substring(0,50), u:m[1]});
+      }
+    }
+    return items.map(i => ({t:i.t, s:'健康资讯', src:'人民健康', u:i.u}));
+  } catch(e) { return []; }
+}
+
+// 22. 虎嗅
+async function s22() {
+  try {
+    const h = await fetch('https://www.huxiu.com/');
+    const seen = new Set(), items = [];
+    const re = /<h2[^>]*>([^<]+)<\/h2>/g; let m;
+    while ((m = re.exec(h)) && items.length < 3) {
+      const t = m[1].trim();
+      if (t.length > 6 && !seen.has(t.substring(0,8))) { seen.add(t.substring(0,8)); items.push(t); }
+    }
+    return items.map(t => ({t:t.substring(0,45), s:'深度商业', src:'虎嗅', u:'https://www.huxiu.com/'}));
+  } catch(e) { return []; }
+}
+
+//// ====== Stocks & Forex ======
 async function getStocks() {
   try {
     const d = JSON.parse(await fetch('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000688,1.000300,1.000016,1.000905,0.399001'));
@@ -322,13 +388,13 @@ function classify(items) {
   const w=[], t=[], c=[], f=[], s=[], e=[], h=[];
   for (const item of items) {
     const tt = item.t + ' ' + (item.s||'');
-    if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌/.test(tt)) s.push(item);
+    if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌|银牌|铜牌|竞技|选手|运动员|教练|运动|马拉松|游泳|田径|拳击|武道|赛事|骑师/.test(tt)) s.push(item);
     else if (/AI|人工智能|科技|5G|6G|芯片|算力|软件|华为|数字|互联网|大模型|GPT|元宇宙|量子|卫星|航天|火箭|SpaceX|特斯拉|苹果|微软|谷歌|OpenAI|专利|算法|数据|区块链|自动化|智能|机器人|电动车|光伏|新能源|储能|电脑|手机|IT/.test(tt)) t.push(item);
     else if (/电影|票房|音乐|演唱会|综艺|游戏|明星|导演|电视剧|Netflix|迪士尼|B站|抖音|快手|舞台|广告|视频|直播|演出/.test(tt)) e.push(item);
     else if (/健康|养生|运动|饮食|睡眠|药|医院|疫苗|新冠|中医|营养|健身|减肥|体检|医保|医疗|疾病|诊断|治疗|患者/.test(tt)) h.push(item);
     else if (/A股|沪指|深指|北向|证监会|注册制|分红|涨停|券商|基金|私募|公募|科创板|创业板|上证|深证|沪深|北交所|股份|股票|上市|退市|财报|业绩|净利润|营收|利润|亏损|同比|增长|股东/.test(tt)) c.push(item);
     else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI|关税|美股|标普|纳斯达克|道指/.test(tt)) f.push(item);
-    else if (/伊朗|古巴|特朗普|制裁|美国|德国|北约|中东|国际|石油|非盟|G20|以军|巴以|欧盟|俄罗斯|乌克兰|外交|撤军|欧洲|英国|法国|日本|韩国|朝鲜|印度|联合国|世贸|WTO|难民|移民|空袭|会谈|峰会|大使|外长|总统|国会|参议院|地震|海啸|间谍|爆炸|袭击|逮捕|战争/.test(tt)) w.push(item);
+    else if (/伊朗|古巴|特朗普|制裁|美国|德国|北约|中东|国际|石油|非盟|G20|以军|巴以|欧盟|俄罗斯|乌克兰|外交|撤军|欧洲|英国|法国|日本|韩国|朝鲜|印度|联合国|世贸|WTO|难民|移民|空袭|会谈|峰会|大使|外长|总统|国会|参议院|地震|海啸|间谍|爆炸|袭击|逮捕|战争|难民|加沙|红海|胡塞|金砖|上合|非洲|拉美|东盟|北约|欧洲|美军|谈判|停火|制裁|协议|申明/.test(tt)) w.push(item);
     else if (/公积金|贷款|房地产|楼市|房价|租房|消费|购物|旅游|五一|假期|高速|公路|出行/.test(tt)) c.push(item);
     else if (/习近平|总书记|国务院|发改委|政策|政府|报告|代表|委员|两会|部署|战略/.test(tt)) c.push(item);
     else w.push(item);
@@ -410,14 +476,13 @@ async function main() {
 
   const results = await Promise.all([
     s1(),s2(),s3(),s4(),s5(),s6(),s7(),s8(),s9(),s10(),
-    s11(),s12(),s13(),s14(),s15(),s16(),s17(),s18(),s19(),s20()
+    s11(),s12(),s13(),s14(),s15(),s16(),s17(),s18(),s19(),s20(),s21(),s22(),s23()
   ]);
 
-  const [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20] = results;
+  const [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,a23] = results;
 
-  const namesArr = [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20];
-  const labels = ['同花顺','华尔街见闻','财联社','第一财经','网易','新浪财经','新华网','人民网','中国新闻网','央视新闻',
-    '凤凰网','财新网','每经','证券时报','中证报','IT之家','百度','虎嗅','品玩','Donews'];
+  const namesArr = [a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22,a23];
+  const labels = ['同花顺','华尔街见闻','财联社','第一财经','网易','新浪财经','新华网','人民网','中国新闻网','央视新闻','凤凰网','财新网','每经','证券时报','中证报','IT之家','百度','澎湃新闻','36氪','Donews','新浪体育','虎嗅','人民健康'];
 
   const cnt = {}; let totalSrc = 0;
   namesArr.forEach((arr, idx) => { if (arr.length) { cnt[labels[idx]] = arr.length; totalSrc += arr.length; }});
