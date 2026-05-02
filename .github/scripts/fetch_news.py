@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""环球资讯早报 - 主采集器（精简15源，urllib，8秒超时）"""
-import json, re, urllib.request, ssl, datetime, socket
+"""环球资讯早报 - 主采集器（精简稳定20源，urllib，6秒超时）"""
+import json, re, urllib.request, ssl, datetime, socket, sys
 
-socket.setdefaulttimeout(8)
-TIMEOUT = 8
+socket.setdefaulttimeout(6)
+TIMEOUT = 6
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'}
 CTX = ssl.create_default_context()
 CTX.check_hostname = False; CTX.verify_mode = ssl.CERT_NONE
@@ -123,8 +123,8 @@ def main():
     for fn in sources:
         try:
             items = fn()
-            if items: news.extend(items); print(f'  {fn.__name__}: {len(items)}')
-        except: print(f'  {fn.__name__}: FAILED')
+            if items: news.extend(items)
+        except: pass
     seen=set();deduped=[]
     for n in news:
         k=n.get('t','')[:10]
@@ -134,7 +134,7 @@ def main():
     output={'news':deduped,'stocks':stocks,'forex':forex,'labels':[]}
     with open('news_data.json','w',encoding='utf-8') as f:
         json.dump(output,f,ensure_ascii=False)
-    print(f'Done: {len(news)} raw -> {len(deduped)} deduped')
+    print('Done:', len(deduped), 'news')
 
 if __name__ == '__main__':
     main()
