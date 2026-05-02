@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""每日价值资讯 - 精炼版：重磅头条+板块精简"""
+"""V5 首页重构 - 信息密度+版面优化"""
 import json, os, datetime, re, sys
 
-try:
-    from html import escape
+try: from html import escape
 except:
     import cgi
-    def escape(s, quote=False):
-        return cgi.escape(s, quote)
+    def escape(s, quote=False): return cgi.escape(s, quote)
 
 with open('news_data.json', 'r', encoding='utf-8') as f:
     data = json.load(f)
@@ -16,8 +14,6 @@ with open('news_data.json', 'r', encoding='utf-8') as f:
 now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
 wd = ['星期一','星期二','星期三','星期四','星期五','星期六','星期日']
 dc = f'{now.month}月{now.day}日 {wd[now.weekday()]}'
-h = now.hour
-gr = '早上好' if 5<=h<12 else '中午好' if 12<=h<14 else '下午好' if 14<=h<18 else '晚上好'
 
 all_news = []
 sd = data.get('news', [])
@@ -26,57 +22,43 @@ groups = data.get('groups', {})
 if isinstance(sd, list):
     for item in sd:
         if isinstance(item, dict):
-            t = (item.get('t') or '').strip()[:55]
+            t = (item.get('t') or '').strip()[:50]
             if len(t) >= 5: all_news.append(item)
-        elif isinstance(item, list):
-            for it in item:
-                if isinstance(it, dict):
-                    t = (it.get('t') or it.get('title') or '').strip()[:55]
-                    if len(t) >= 5:
-                        all_news.append({'t':t,'src':it.get('src',''),'cat':it.get('cat','hot'),'u':escape(it.get('u','#'), quote=True)})
 
 total = len(all_news)
 srcs = sorted(set(n.get('src','') for n in all_news))
 
-cat_names = {'finance':'📈 投资·财经','macro':'🌐 宏观·天下','hot':'🔥 热点·民生','tech':'💡 科技·前沿','oppo':'🎯 机会·风向'}
+cat_names = {'finance':'📈 投资·财经','macro':'🌐 宏观·政策','hot':'🔥 热点·民生','tech':'💡 科技·前沿','oppo':'🎯 机会·风向'}
 cat_colors = {'finance':'#f59e0b','macro':'#3b82f6','hot':'#ef4444','tech':'#8b5cf6','oppo':'#22c55e'}
 order = ['finance','macro','hot','tech','oppo']
+
+# 权重：src_importance给财经类源更高优先级
+src_importance = {
+    '华尔街见闻':1,'同花顺':1,'财联社':1,'财联社电报':1,'华尔街深度':1,'第一财经':2,
+    '新浪财经':2,'每经新闻':2,'网易财经':2,'DoNews':2,'虎嗅':2,'36氪':2,
+    '参考消息':3,'中国新闻网':3,'环球网':3,'澎湃新闻':3,'凤凰网':3,
+    '百度热搜':4,'微博热搜':4,'知乎热门':4,'IT之家':3
+}
 
 if not any(groups.values()) and all_news:
     groups = {}
     for n in all_news:
         groups.setdefault(n.get('cat','hot'), []).append(n)
 
-# 头条：只从finance和macro取前6条
-# 头条：从finance/macro排名前取，过滤无价值条目
-headlines = []
-headline_ban = ['Choice','金融终端','客户端','理财','下载','APP','app','基金','估值']
-def is_headline_good(t):
-    for b in headline_ban:
-        if b in t: return False
-    return True
+# 重磅头条：按源重要性排序，取前5条最有价值
+headline_candidates = []
 for c in ['finance','macro']:
     items = groups.get(c, [])
-    count = 0
-    for item in items:
-        if count >= 3: break
+    sorted_items = sorted(items, key=lambda x: src_importance.get(x.get('src',''), 99))
+    for item in sorted_items:
         t = item.get('t','')
-        if not is_headline_good(t): continue
-        nn = escape(t)
-        src = escape(item.get('src',''))
-        bg = cat_colors.get(c, '#666')
-        uu = item.get('u','#')
-        headlines.append({'t':nn, 'src':src, 'color':bg, 'u':uu, 'cat_label':cat_names[c]})
-        count += 1
+        # 过滤无价值条目
+        ban_hl = ['Choice','金融终端','客户端','理财','下载','APP','基金','估值']
+        if any(b in t for b in ban_hl): continue
+        if len(t) >= 6 and len(t) < 50:
+            headline_candidates.append(item)
 
-# 热词
-wf = {}
-skip = set(['报道','新闻','中国','市场','公司','发布','最新','一个','进行','表示','以及','没有','不是','正在','这个','已经','可以','其他','我们','除了','并且','虽然','但是','因为','所以'])
-txt = ' '.join(n.get('t','') for n in all_news)
-for m in re.finditer('[\u4e00-\u9fff]{2,4}', txt):
-    w = m.group()
-    if w not in skip: wf[w] = wf.get(w,0)+1
-hw = sorted(wf.items(), key=lambda x:-x[1])[:10]
+headlines = headline_candidates[:6]
 
 # 股票
 stocks = data.get('stocks', [])
@@ -95,7 +77,16 @@ fxm = {'USD':'美元','EUR':'欧元','JPY':'日元','GBP':'英镑','HKD':'港币
 fr = ''
 for k in ['USD','EUR','JPY','GBP','HKD']:
     if k in forex:
-        fr += '<div class="fi"><span>'+fxm[k]+' ('+k+')</span><span class="fv">'+forex[k]+'</span></div>\n'
+        fr += '<div class="fi"><span>'+fxm[k]+' ('+k+')</span><span class="fv">'+forex[k]+'</span></div>'
+
+# 热词
+wf = {}
+skip = set(['报道','新闻','中国','市场','公司','发布','最新','一个','进行','表示','以及','没有','不是','正在','这个','已经','可以','其他','我们','除了','并且','虽然','但是','因为','所以','今天','今年','已经','可能','开始','之后','之后','还有','成为','包括'])
+txt = ' '.join(n.get('t','') for n in all_news)
+for m in re.finditer('[\u4e00-\u9fff]{2,4}', txt):
+    w = m.group()
+    if w not in skip: wf[w] = wf.get(w,0)+1
+hw = sorted(wf.items(), key=lambda x:-x[1])[:12]
 
 # 天气
 wh = ''
@@ -110,7 +101,7 @@ try:
     de = cc.get('weatherDesc',[{}])[0].get('value','--')
     ws = cc.get('windspeedKmph','--')
     we = '☀️' if '晴' in de else '⛅' if '云' in de else '🌧️' if '雨' in de else '🌤️'
-    wh = '<div class="se" id="w"><div class="weather-bar">'+we+' 北京 '+tm+'&#176; '+de+'  &#168;'+ws+'km/h</div></div>'
+    wh = '<div class="wbar">'+we+' 北京 '+tm+'&#176; '+de+'  &#168;'+ws+'km/h</div>'
 except: pass
 
 # 导航
@@ -118,44 +109,50 @@ nav = ''
 for c in order:
     nav += '<a href="#g'+c+'">'+cat_names[c]+'</a>'
 
-# 头条HTML — 更有力
+# 头条HTML - 更醒目的卡片式
 hl_html = ''
 if headlines:
     hls = ''
     for i, hl in enumerate(headlines):
-        clr = hl['color']
-        rank_icon = '🔴' if i == 0 else '🟠' if i == 1 else '🟡'
+        nn = escape(hl.get('t',''))[:45]
+        src = escape(hl.get('src',''))
+        uu = hl.get('u','#')
+        clr = cat_colors.get(hl.get('cat',''), '#666')
+        # 前两条特殊标记
+        badge = '📌' if i < 2 else '▸'
         hls += (
-            '<div class="hl" onclick="window.open(\''+hl['u']+'\',\'_blank\')">'
-            '<span class="hb" style="background:'+clr+'">'+hl['cat_label'][:4]+'</span>'
-            '<span class="ht">'+hl['t']+'</span>'
-            '<span class="hs">'+hl['src']+'</span>'
-            '</div>\n')
-    hl_html = '<div class="se" id="top"><div class="sh"><span class="st">🔥 今日重磅</span><span class="sc">'+str(len(headlines))+'条</span></div>\n'+hls+'</div>\n'
+            '<div class="hl" onclick="window.open(\''+uu+'\',\'_blank\')">'
+            '<span class="hb" style="background:'+clr+'">'+badge+'</span>'
+            '<span class="ht">'+nn+'</span>'
+            '<span class="hs">'+src+'</span>'
+            '</div>')
+    hl_html = '<div class="se" id="top"><div class="sh"><span class="st">🔥 今日要闻</span><span class="sc">'+str(len(headlines))+'条</span></div>'+hls+'</div>'
 
 # 各板块
 news_html = ''
 for c in order:
     items = groups.get(c, [])
-    if not items:
-        continue
+    if not items: continue
     bg = cat_colors.get(c, '#666')
     inner = ''
     for i, item in enumerate(items):
-        nn = escape(item.get('t',''))[:45]
+        nn = escape(item.get('t',''))[:40]
         s = escape(item.get('src',''))
         uu = item.get('u','#')
         inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')">'
-        inner += '<div class="nt"><span class="ni" style="background:'+bg+'">'+str(i+1)+'</span><span class="nn">'+nn+'</span></div>'
-        inner += '<div class="nm"><span class="ns" style="color:'+bg+'">&#9679;</span><span class="nsrc">'+s+'</span></div></div>\n'
-    news_html += '<div class="se" id="g'+c+'"><div class="sh"><span class="st">'+cat_names[c]+'</span><span class="sc">'+str(len(items))+'条</span></div>\n'+inner+'</div>\n'
+        inner += '<span class="ni" style="background:'+bg+'">'+str(i+1)+'</span>'
+        inner += '<span class="nn">'+nn+'</span>'
+        inner += '<span class="ns">'+s+'</span>'
+        inner += '</div>'
+    news_html += '<div class="se" id="g'+c+'"><div class="sh"><span class="st">'+cat_names[c]+'</span><span class="sc">'+str(len(items))+'条</span></div>'+inner+'</div>'
 
+# 热词
 hw_html = ''
 if hw:
     tags = ''
     for w,_ in hw:
         tags += '<span class="tg">#'+escape(w)+'</span>'
-    hw_html = '<div class="se" id="h"><div class="sh"><span class="st">📌 热词</span></div><div class="tgs">'+tags+'</div></div>'
+    hw_html = '<div class="se"><div class="sh"><span class="st">📌 今日热词</span></div><div class="tgs">'+tags+'</div></div>'
 
 src_html = ' · '.join(escape(s) for s in srcs)
 market_html = ''
@@ -163,73 +160,71 @@ if sr:
     market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span><span class="sc">实时</span></div><div class="sg">'+sr+'</div></div>'
 fx_html = ''
 if fr:
-    fx_html = '<div class="se" id="f"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">'+fr+'</div></div>'
+    fx_html = '<div class="se"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">'+fr+'</div></div>'
 
 body = ''
 body += '<header>\n'
 body += '<div class="top"><span class="tl">📊 每日价值资讯</span><span class="live"></span></div>\n'
-body += '<div class="sub"><span>'+dc+'</span><span class="gr">'+gr+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>\n'
-body += '<nav>'+nav+'</nav>\n</header>\n'
-body += market_html + fx_html + wh + hl_html + hw_html + news_html
-body += '<div class="se" id="s"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>\n'
-body += '<footer>📊 每2小时更新 · 投资 · 宏观 · 热点 · 科技 · 机会</footer>\n'
-body += '<div id="bt" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">↑</div>\n'
+body += '<div class="sub"><span>'+dc+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>\n'
+body += wh + '\n<nav>'+nav+'</nav>\n</header>\n'
+body += market_html + fx_html
+body += hl_html + hw_html + news_html
+body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
+body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
+body += '<div id="bt" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">↑</div>'
 
-script = '<script>\n'
-script += 'var bt=document.getElementById("bt");\n'
+script = '<script>\nvar bt=document.getElementById("bt");\n'
 script += 'window.addEventListener("scroll",function(){bt.style.opacity=window.scrollY>200?1:0});\n'
 script += 'document.querySelectorAll("nav a").forEach(function(a){a.addEventListener("click",function(e){e.preventDefault();var t=document.querySelector(this.getAttribute("href"));t&&t.scrollIntoView({behavior:"smooth",block:"start"})})});\n'
 script += 'var ti=0,tt=["📊 每日价值资讯","📰 '+str(total)+'条","🔍 '+str(len(srcs))+'源"];\n'
 script += 'setInterval(function(){document.title=tt[ti%3];ti++},4000);\n'
-script += '</script>\n'
+script += '</script>'
 
 css = '''*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0b0e16;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.5;min-height:100vh}
-header{padding:14px 12px 8px;position:sticky;top:0;background:rgba(11,14,22,0.93);z-index:10;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,0.03);max-width:780px;margin:0 auto}
-.app{max-width:780px;margin:0 auto;padding:0 12px 40px}
-.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
-.tl{font-size:20px;font-weight:700;background:linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.sub{font-size:10px;color:#4a5a6d;display:flex;gap:8px;align-items:center;margin:3px 0 5px}
-.gr{color:#22c55e;font-size:10px;font-weight:500}
-.live{width:5px;height:5px;background:#ef4444;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
+body{background:#0b0e16;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6;min-height:100vh}
+header{padding:12px 12px 6px;position:sticky;top:0;background:rgba(11,14,22,0.95);z-index:10;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,0.02);max-width:720px;margin:0 auto}
+.app{max-width:720px;margin:0 auto;padding:0 10px 40px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.tl{font-size:18px;font-weight:700;background:linear-gradient(135deg,#f59e0b,#ef4444,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{font-size:9px;color:#4a5a6d;display:flex;gap:8px;align-items:center;margin:1px 0 3px}
+.live{width:4px;height:4px;background:#ef4444;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-nav{display:flex;gap:3px;overflow-x:auto;padding-bottom:1px;scrollbar-width:none}
-nav a{color:#5a6a7d;text-decoration:none;font-size:10px;padding:4px 10px;border-radius:12px;background:rgba(255,255,255,0.02);flex-shrink:0;white-space:nowrap}
+.wbar{font-size:9px;color:#5a6a7d;padding:0 0 1px}
+nav{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:2px 0 4px}
+nav a{color:#5a6a7d;text-decoration:none;font-size:9px;padding:3px 8px;border-radius:10px;background:rgba(255,255,255,0.02);flex-shrink:0;white-space:nowrap}
 nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
-.se{background:#111524;border:1px solid rgba(42,48,69,0.12);border-radius:10px;padding:10px;margin-bottom:8px;animation:fi .3s ease}
-@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-.sh{display:flex;align-items:center;gap:6px;margin-bottom:4px;padding-bottom:5px;border-bottom:1px solid rgba(255,255,255,0.02)}
-.st{font-size:13px;font-weight:600}
-.sc{font-size:10px;color:#4a5a6d;margin-left:auto}
-.hl{padding:5px 0;cursor:pointer;margin:0 -3px;padding:6px 3px;border-radius:5px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.hl:hover{background:rgba(255,255,255,0.01)}
-.hb{display:inline-flex;padding:0 5px;height:16px;color:#fff;font-size:8px;font-weight:700;border-radius:3px;align-items:center;flex-shrink:0}
-.ht{font-size:13px;font-weight:600;flex:1;line-height:1.4}
-.hs{font-size:9px;color:#3d4a5d}
-.nc{padding:4px 0;cursor:pointer;margin:0 -3px;padding:5px 3px;border-radius:5px;border-bottom:1px solid rgba(255,255,255,0.006)}
+.se{background:#111524;border:1px solid rgba(42,48,69,0.12);border-radius:8px;padding:8px;margin-bottom:6px;animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+.sh{display:flex;align-items:center;gap:5px;margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid rgba(255,255,255,0.015)}
+.st{font-size:12px;font-weight:600}
+.sc{font-size:9px;color:#4a5a6d;margin-left:auto}
+.hl{padding:4px 0;cursor:pointer;margin:0 -2px;padding:5px 2px;border-radius:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;border-bottom:1px solid rgba(255,255,255,0.006)}
+.hl:last-child{border-bottom:none}
+.hl:hover{background:rgba(255,255,255,0.008)}
+.hb{display:inline-flex;width:16px;height:16px;color:#fff;font-size:8px;font-weight:700;border-radius:3px;align-items:center;justify-content:center;flex-shrink:0}
+.ht{font-size:12px;font-weight:600;flex:1;line-height:1.35}
+.hs{font-size:8px;color:#3d4a5d;flex-shrink:0}
+.nc{padding:3px 0;cursor:pointer;margin:0 -2px;padding:4px 2px;border-radius:4px;display:flex;align-items:center;gap:4px;border-bottom:1px solid rgba(255,255,255,0.005)}
 .nc:last-child{border-bottom:none}
-.nc:hover{background:rgba(255,255,255,0.01)}
-.nt{display:flex;gap:5px;font-size:12px;font-weight:500;line-height:1.4;align-items:flex-start}
-.ni{display:inline-flex;width:14px;height:14px;color:#fff;font-size:7px;font-weight:700;border-radius:3px;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.nn{flex:1}
-.nm{font-size:9px;color:#3d4a5d;padding-left:19px;display:flex;gap:3px;margin-top:1px}
-.nsrc{color:#5a6a7d}
-.sg{display:grid;grid-template-columns:1fr 1fr;gap:3px}
-.si{display:flex;gap:4px;background:rgba(255,255,255,0.007);border-radius:5px;padding:4px 8px;align-items:center}
-.sn{font-size:9px;color:#6b7a8d;min-width:42px;flex-shrink:0}
-.sv{font-size:12px;font-weight:600;margin-left:auto}
-.sc2{font-size:10px;font-weight:500;min-width:50px;text-align:right;flex-shrink:0}
+.nc:hover{background:rgba(255,255,255,0.008)}
+.ni{display:inline-flex;width:13px;height:13px;color:#fff;font-size:7px;font-weight:700;border-radius:2px;align-items:center;justify-content:center;flex-shrink:0}
+.nn{font-size:11px;flex:1;line-height:1.35}
+.ns{font-size:8px;color:#3d4a5d;flex-shrink:0}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.si{display:flex;gap:3px;background:rgba(255,255,255,0.006);border-radius:4px;padding:3px 6px;align-items:center}
+.sn{font-size:8px;color:#6b7a8d;min-width:38px;flex-shrink:0}
+.sv{font-size:11px;font-weight:600;margin-left:auto}
+.sc2{font-size:9px;font-weight:500;min-width:45px;text-align:right;flex-shrink:0}
 .up{color:#22c55e}.down{color:#ef4444}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:3px}
-.fi{display:flex;justify-content:space-between;background:rgba(255,255,255,0.007);border-radius:4px;padding:3px 8px;font-size:11px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.fi{display:flex;justify-content:space-between;background:rgba(255,255,255,0.006);border-radius:3px;padding:2px 6px;font-size:10px}
 .fv{font-weight:600}
-.weather-bar{font-size:11px;color:#5a6a7d;padding:2px 0}
-.tgs{display:flex;flex-wrap:wrap;gap:4px;padding:2px 0 4px}
-.tg{background:rgba(99,102,241,0.04);color:#818cf8;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:500}
-.srcs{font-size:9px;color:#3d4a5d;line-height:1.5;padding:2px 0}
-footer{padding:10px 0;text-align:center;font-size:9px;color:#2a3045}
-#bt{position:fixed;bottom:50px;right:12px;width:30px;height:30px;border-radius:50%;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);color:#818cf8;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;opacity:0;transition:opacity .3s}
-@media(max-width:480px){.sg,.fg{grid-template-columns:1fr}.tl{font-size:18px}}
+.tgs{display:flex;flex-wrap:wrap;gap:3px;padding:1px 0 3px}
+.tg{background:rgba(99,102,241,0.04);color:#818cf8;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:500}
+.srcs{font-size:8px;color:#3d4a5d;line-height:1.5;padding:1px 0}
+footer{padding:8px 0;text-align:center;font-size:8px;color:#2a3045}
+#bt{position:fixed;bottom:50px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);color:#818cf8;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;opacity:0;transition:opacity .3s}
+@media(max-width:480px){.sg,.fg{grid-template-columns:1fr}.tl{font-size:16px}}
 '''
 
 html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
