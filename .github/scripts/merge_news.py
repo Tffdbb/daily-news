@@ -49,9 +49,9 @@ def main():
     # 写入最终news_data.json (供generate_site.py使用)
     output = {'news': deduped}
     
-    # 保留行情/汇率数据 (从主采集器)
+    # 保留行情/汇率/天气/标签数据 (从主采集器)
     main_data = load('news_data.json')
-    for key in ['stocks', 'forex', 'labels']:
+    for key in ['stocks', 'forex', 'labels', 'weather']:
         if key in main_data and main_data[key]:
             output[key] = main_data[key]
     if 'stocks' not in output or not output.get('stocks'):
