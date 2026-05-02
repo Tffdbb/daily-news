@@ -5,9 +5,8 @@ on:
     - cron: '0 0,4,10,14 * * *'
   workflow_dispatch:
 
-# 关键：禁用默认的 GITHUB_TOKEN Pages 自动构建
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -33,8 +32,8 @@ jobs:
       - name: Run news generator
         run: node .github/scripts/generate_site_gh.js
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Create .nojekyll
+        run: touch .nojekyll
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
