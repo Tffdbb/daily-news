@@ -31,7 +31,7 @@ jobs:
           node-version: '20'
 
       - name: Python news collector
-        run: python3 .github/scripts/fetch_news.py
+        run: timeout 180 python3 .github/scripts/fetch_news.py || { python3 -c 'import json; json.dump({"news":[],"labels":[],"stocks":[],"forex":{}},open("news_data.json","w"))' && echo 'FETCH_EMPTY: created fallback news_data.json'; }
 
       - name: Python page builder
         working-directory: ./
