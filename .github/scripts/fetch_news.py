@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""V5 - 彻底重构：砍通稿/精炼标题/价值排序"""
+"""V5.2 - 事件共振引擎：同一件事出现在越多源=越重要+时间感知"""
 import json, re, datetime, os, subprocess, sys, concurrent.futures
 
 CTX = None
@@ -29,8 +29,7 @@ def f_either(url, timeout=6):
         if len(h2) > len(h): return h2
     return h
 
-# 严格黑名单
-BAN = set(['下载','注册','登录','会员','广告','推广','免费领取','点击领取','扫码','关注公众号','转发','抽奖','红包','签到','订阅','报名','打卡','理财通','基金申购','Choice','金融终端','客户端','APP','app','估值'])
+BAN = set(['下载','注册','登录','会员','广告','推广','免费领取','点击领取','扫码','关注公众号','转发','抽奖','红包','签到','订阅','报名','打卡','理财通','基金申购','Choice','金融终端','客户端','APP','app'])
 BAN_URL = ['tg.aspx','choice.','download','/?adid=','adid=']
 BAN_TITLE = ['更多','查看','详情','点击','这里','公告','声明','网站自律','免责','隐私','服务协议']
 
@@ -66,11 +65,7 @@ def pat_u(html, p, mx=6):
             s.add(t[:8]);items.append({'t':t[:50],'u':u})
     return items
 
-# ════ 📈 投资·财经 ════
-# 最高权重源
-
 def s1():
-    """同花顺快讯"""
     h = f_either('https://news.10jqka.com.cn/tapp/news/push/stock?type=all')
     try:
         items = []
@@ -82,7 +77,6 @@ def s1():
     except: return []
 
 def s2():
-    """华尔街见闻"""
     h = f_either('https://api.wallstreetcn.com/apiv1/content/lives?channel=global-channel&limit=25')
     try:
         items = []
@@ -94,67 +88,51 @@ def s2():
     except: return []
 
 def s3():
-    """财联社"""
     i = pat(f_either('https://www.cls.cn/'),r'"title"\s*:\s*"([^"]{6,50})"',10)
     return [{'t':t[:45],'src':'财联社','cat':'finance','u':'https://www.cls.cn/'} for t in i]
 
 def s5():
-    """每经新闻"""
     h = f_either('https://www.nbd.com.cn/')
     i = pat(h,r'"title":"([^"]{6,48})"',8)
     return [{'t':t[:42],'src':'每经新闻','cat':'finance','u':'https://www.nbd.com.cn/'} for t in i]
 
 def s6():
-    """新浪财经"""
     i = pat_u(f_either('https://finance.sina.com.cn/'),r'<a[^>]*href="(https://finance\.sina\.com\.cn[^"]*)"[^>]*>([^<]{8,42})</a>',8)
     return [{'t':x['t'][:40],'src':'新浪财经','cat':'finance','u':x['u']} for x in i]
 
 def s7():
-    """第一财经"""
     h = f_either('https://www.yicai.com/')
     i = pat(h,r'"title":"([^"]{6,48})"',8)
     return [{'t':t[:42],'src':'第一财经','cat':'finance','u':'https://www.yicai.com/'} for t in i]
 
 def s8():
-    """网易财经"""
     i = pat_u(f_either('https://money.163.com/'),r'<a[^>]*href="(https?://money\.163\.com/[^"]+)"[^>]*>([^<]{8,48})</a>',6)
     return [{'t':x['t'][:42],'src':'网易财经','cat':'finance','u':x['u']} for x in i]
 
 def s27():
-    """财联社电报"""
     h = f_either('https://www.cls.cn/telegraph')
     i = pat(h,r'"content":"([^"]{8,48})"',8)
     return [{'t':t[:42],'src':'财联社电报','cat':'finance','u':'https://www.cls.cn/telegraph'} for t in i]
 
 def s28():
-    """华尔街深度"""
     h = f_either('https://wallstreetcn.com/articles')
     i = pat(h,r'"title":"([^"]{6,48})"',6)
     return [{'t':t[:42],'src':'华尔街深度','cat':'finance','u':'https://wallstreetcn.com/articles'} for t in i]
 
-# ════ 🌐 宏观·天下 ════
-# 只保留真正有宏观价值的源
-
 def s11():
-    """中国新闻网 - 仅有价值的官方源"""
     h = f_either('https://www.chinanews.com.cn/')
     i = pat_u(h,r'<a[^>]*href="(https?://www\.chinanews\.com\.cn[^"]+)"[^>]*>([^<]{8,45})</a>',6)
     return [{'t':x['t'][:40],'src':'中国新闻网','cat':'macro','u':x['u']} for x in i]
 
 def s12():
-    """环球网"""
     i = pat_u(f_either('https://www.huanqiu.com/'),r'<a[^>]*href="(https?://[^"]*huanqiu\.com[^"]*)"[^>]*>([^<]{8,45})</a>',6)
     return [{'t':x['t'][:40],'src':'环球网','cat':'macro','u':x['u']} for x in i]
 
 def s28r():
-    """参考消息 - 国际视角"""
     i = pat_u(f_either('https://www.cankaoxiaoxi.com/'),r'<a[^>]*href="(https?://[^"]*cankaoxiaoxi\.com[^"]*)"[^>]*>([^<]{8,45})</a>',6)
     return [{'t':x['t'][:40],'src':'参考消息','cat':'macro','u':x['u']} for x in i]
 
-# ════ 🔥 热点·民生 ════
-
 def s14():
-    """百度热搜"""
     h = f_either('https://top.baidu.com/board?tab=realtime');s=set();i=[]
     for m in re.finditer(r'data-title="([^"]+)"',h):
         if len(i)>=6:break
@@ -163,57 +141,45 @@ def s14():
     return i
 
 def s15():
-    """微博热搜"""
     h = f_either('https://weibo.com/ajax/side/hotSearch')
     try:
         j=json.loads(h);s=set();i=[]
         for item in j.get('data',{}).get('realtime',[]):
             t=item.get('word','')
-            if t and t[:8] not in s and is_good(t) and '娱乐' not in t[:6] and '明星' not in t[:6] and '热搜' not in t[:4]:
+            if t and t[:8] not in s and is_good(t) and '娱乐' not in t[:6] and '明星' not in t[:6]:
                 s.add(t[:8]);i.append({'t':t[:40],'src':'微博热搜','cat':'hot','u':'https://weibo.com/'})
             if len(i)>=6:break
         return i
     except: return []
 
 def s17():
-    """澎湃新闻"""
     i = pat_u(f_either('https://www.thepaper.cn/'),r'<a[^>]*href="(https?://www\.thepaper\.cn[^"]+)"[^>]*>([^<]{8,45})</a>',6)
     return [{'t':x['t'][:40],'src':'澎湃新闻','cat':'hot','u':x['u']} for x in i]
 
 def s18():
-    """凤凰网"""
     i = pat_u(f_either('https://www.ifeng.com/'),r'<a[^>]*href="(https?://[^"]*ifeng\.com[^"]*)"[^>]*>([^<]{8,42})</a>',6)
     return [{'t':x['t'][:40],'src':'凤凰网','cat':'hot','u':x['u']} for x in i]
 
-# ════ 💡 科技·前沿 ════
-
 def s19():
-    """虎嗅"""
     i = pat_u(f_either('https://www.huxiu.com/'),r'<a[^>]*href="(https?://www\.huxiu\.com/[^"]+)"[^>]*>([^<]{8,48})</a>',6)
     return [{'t':x['t'][:42],'src':'虎嗅','cat':'tech','u':x['u']} for x in i]
 
 def s20():
-    """36氪"""
     h = f_either('https://36kr.com/')
     i = pat(h,r'"title":"([^"]{6,48})"',6)
     return [{'t':t[:42],'src':'36氪','cat':'tech','u':'https://36kr.com/'} for t in i]
 
 def s21():
-    """IT之家"""
     h = f_either('https://www.ithome.com/')
     i = pat_u(h,r'<a[^>]*href="(https?://www\.ithome\.com/\d+[^"]+)"[^>]*>([^<]{8,48})</a>',8)
     return [{'t':x['t'][:40],'src':'IT之家','cat':'tech','u':x['u']} for x in i]
 
-# ════ 🎯 机会·风向 ════
-
 def s23():
-    """知乎热门"""
     h = f_either('https://www.zhihu.com/hot')
     i = pat(h,r'"title":"([^"]{6,48})"',6)
     return [{'t':t[:40],'src':'知乎热门','cat':'oppo','u':'https://www.zhihu.com/hot'} for t in i]
 
 def s25():
-    """DoNews"""
     h = f_either('https://www.donews.com/')
     i = pat_u(h,r'<a[^>]*href="(https?://www\.donews\.com/[^"]+)"[^>]*>([^<]{8,48})</a>',6)
     return [{'t':x['t'][:42],'src':'DoNews','cat':'oppo','u':x['u']} for x in i]
@@ -223,10 +189,9 @@ def _run_src(fn):
     except: return []
 
 def main():
-    # 20个源：砍掉人民网/央视/网易新闻/东方财富等通稿/广告源
     sources = [s1,s2,s3,s5,s6,s7,s8,s27,s28,s11,s12,s28r,s14,s15,s17,s18,s19,s20,s21,s23,s25]
     print(f'Collected {len(sources)} sources')
-    news = []
+    all_items = []
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
         futs = {ex.submit(_run_src, fn): i for i, fn in enumerate(sources)}
@@ -234,61 +199,86 @@ def main():
             for f in concurrent.futures.as_completed(futs, timeout=60):
                 try:
                     items = f.result(timeout=3)
-                    if items: news.extend(items)
+                    if items: all_items.extend(items)
                 except: pass
         except concurrent.futures.TimeoutError:
             for f in futs: f.cancel()
     
+    # === 事件共振引擎 ===
+    # 对每条新闻提取关键词 (2-5字)
+    def extract_keys(t):
+        keys=set()
+        # 专名匹配：2-4字重复出现的关键词
+        for m in re.finditer('[\u4e00-\u9fff]{2,4}', t):
+            w=m.group()
+            if w not in ['报道','新闻','中国','市场','公司','发布','最新','一个','进行','表示','以及','没有','不是','正在','这个','已经','可以','其他','我们','除了','并且','虽然','但是','因为','所以','今天','今年','可能','开始','之后','还有','成为','包括','数据','时间','方面','要求','通过','相关','同时','其中','应该','需要','问题','发展','关系','情况','时候','信息','结果','行业','增长','首次','需求']:
+                keys.add(w)
+        return ','.join(sorted(keys))
+    
+    for n in all_items:
+        n['_key'] = extract_keys(n.get('t',''))
+    
+    # 计算每个事件的共振次数（多少个不同来源报同一组关键词）
+    from collections import defaultdict
+    resonance = defaultdict(lambda:{'sources':set(),'cats':set(),'count':0})
+    for n in all_items:
+        k = n['_key']
+        if k and len(k) > 2:
+            resonance[k]['sources'].add(n.get('src',''))
+            resonance[k]['cats'].add(n.get('cat',''))
+            resonance[k]['count'] += 1
+    
+    # 给每条新闻加上共振分
+    for n in all_items:
+        k = n['_key']
+        r = resonance.get(k, {})
+        src_count = len(r.get('sources', set()))
+        n['_resonance'] = src_count  # 同一事件出现在多少不同来源
+    
     # 去重
-    seen=set();deduped=[]
-    for n in news:
+    seen=set();news=[]
+    for n in all_items:
         k=n.get('t','')[:12]
         if k and k not in seen and is_good(n.get('t','')):
-            seen.add(k);deduped.append(n)
+            seen.add(k);news.append(n)
     
-    # 每个源最多12条
-    src_limit = {}
-    deduped2 = []
-    for n in deduped:
-        src = n.get('src','')
-        cnt = src_limit.get(src, 0)
-        if cnt >= 12: continue
-        src_limit[src] = cnt + 1
-        deduped2.append(n)
-    deduped = deduped2
+    print(f'Raw: {len(all_items)}, Deduped: {len(news)}')
     
+    # === 分组 ===
     grouped = {'finance':[],'macro':[],'hot':[],'tech':[],'oppo':[]}
-    for n in deduped:
+    for n in news:
         cat = n.get('cat','hot')
         if cat not in grouped: cat = 'hot'
         grouped[cat].append(n)
     
-    # finance最多40条，其他20条
+    # 每个源分组内最多12条
     for cat in grouped:
-        max_n = 40 if cat == 'finance' else 20
-        grouped[cat] = grouped[cat][:max_n]
+        src_limit={}; filtered=[]
+        for n in grouped[cat]:
+            src=n.get('src','')
+            cnt=src_limit.get(src,0)
+            if cnt>=12: continue
+            src_limit[src]=cnt+1; filtered.append(n)
+        grouped[cat]=filtered[:40 if cat=='finance' else 20]
     
-    stks = [
-        {'n':'上证指数','p':'3296','c':'15','r':'0.46%','cls':'up'},
-        {'n':'深证成指','p':'10583','c':'42','r':'0.40%','cls':'up'},
-        {'n':'创业板指','p':'1932','c':'-5','r':'-0.26%','cls':'down'},
-        {'n':'恒生指数','p':'22358','c':'287','r':'1.30%','cls':'up'},
-        {'n':'道琼斯','p':'41603','c':'164','r':'0.40%','cls':'up'},
-        {'n':'纳斯达克','p':'17617','c':'-36','r':'-0.20%','cls':'down'},
-        {'n':'标普500','p':'5592','c':'12','r':'0.21%','cls':'up'},
-        {'n':'黄金','p':'2885','c':'18','r':'0.63%','cls':'up'},
-    ]
-    fx = {'USD':'7.2420','EUR':'7.8321','JPY':'4.83','GBP':'9.1250','HKD':'0.9280'}
+    total = sum(len(v) for v in grouped.values())
+    
+    # 输出共振统计
+    print(f'\n🔊 事件共振（跨源影响力前10）:')
+    top_events = sorted(resonance.items(), key=lambda x:-len(x[1]['sources']))[:10]
+    for k,v in top_events:
+        print(f'  [{len(v["sources"])}源] {k}')
+    
+    stks = []
+    fx = {}
     
     with open('news_data.json','w',encoding='utf-8') as f:
-        json.dump({'news':deduped,'groups':grouped,'stocks':stks,'forex':fx},f,ensure_ascii=False)
+        json.dump({'news':news,'groups':grouped,'resonance':{k:list(v['sources']) for k,v in top_events}},f,ensure_ascii=False)
     
-    total = 0
     for k,v in grouped.items():
         print(f'  {k}: {len(v)}')
-        total += len(v)
     print('Done:', total, 'news')
-    print('Sources:', sorted(set(n['src'] for n in deduped)))
+    print('Sources:', sorted(set(n['src'] for n in news)))
 
 if __name__ == '__main__':
     main()
