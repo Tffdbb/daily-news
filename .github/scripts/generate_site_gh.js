@@ -1,4 +1,4 @@
-// 多数据源自动抓取 - 同花顺 + 东方财富 + 新浪 + 百度 + 光明网 + 南方周末
+// 多数据源 - 同花顺 + 华尔街见闻 + 财联社 + 第一财经 + 百度 + 东方财富 + 光明网 + 南方周末 + 新浪
 const fs = require('fs');
 const https = require('https');
 
@@ -14,7 +14,7 @@ function fetch(url, ref) {
   });
 }
 
-// ====== 1. 同花顺 (新闻推送) ======
+// ====== 同花顺 ======
 async function getTHS() {
   try {
     const json = await fetch('https://news.10jqka.com.cn/tapp/news/push/stock?type=all');
@@ -28,7 +28,61 @@ async function getTHS() {
   } catch(e) { return []; }
 }
 
-// ====== 2. 百度实时热搜 ======
+// ====== 华尔街见闻 (API) ======
+async function getWallStreet() {
+  try {
+    const json = await fetch('https://api.wallstreetcn.com/apiv1/content/lives?channel=global-channel&limit=8');
+    const data = JSON.parse(json);
+    if (data.data && data.data.items) {
+      return data.data.items.filter(i => i.title || i.content_text).map(i => ({
+        t: (i.title || i.content_text || '').replace(/<[^>]+>/g, '').trim().substring(0, 55),
+        s: '见闻快讯',
+        src: '华尔街见闻',
+        u: i.uri ? 'https://wallstreetcn.com' + i.uri : 'https://wallstreetcn.com/'
+      }));
+    }
+    return [];
+  } catch(e) { return []; }
+}
+
+// ====== 财联社 (页面解析) ======
+async function getCailian() {
+  try {
+    const html = await fetch('https://www.cls.cn/');
+    const items = [];
+    const re = /"title"\s*:\s*"([^"]+)"/g;
+    let m;
+    const seen = new Set();
+    while ((m = re.exec(html)) !== null) {
+      const t = m[1].trim();
+      if (t.length > 6 && t.length < 55 && !seen.has(t.substring(0, 8))) {
+        seen.add(t.substring(0, 8));
+        items.push({ t: t, s: '电报快讯', src: '财联社', u: 'https://www.cls.cn/' });
+        if (items.length >= 5) break;
+      }
+    }
+    return items;
+  } catch(e) { return []; }
+}
+
+// ====== 第一财经 ======
+async function getYicai() {
+  try {
+    const html = await fetch('https://www.yicai.com/');
+    const items = [];
+    const re = /<a[^>]*href="(https:\/\/www\.yicai\.com\/news\/[^"]+)"[^>]*>([^<]{8,55})<\/a>/g;
+    let m;
+    while ((m = re.exec(html)) !== null) {
+      const t = m[2].replace(/[<>]/g, '').trim();
+      if (t.length > 8 && items.length < 4) {
+        items.push({ t: t, s: '深度财经', src: '第一财经', u: m[1] });
+      }
+    }
+    return items;
+  } catch(e) { return []; }
+}
+
+// ====== 百度热搜 ======
 async function getBaiduHot() {
   try {
     const html = await fetch('https://top.baidu.com/board?tab=realtime');
@@ -48,7 +102,7 @@ async function getBaiduHot() {
   } catch(e) { return []; }
 }
 
-// ====== 3. 光明网 ======
+// ====== 光明网 ======
 async function getGmw() {
   try {
     const html = await fetch('https://www.gmw.cn/');
@@ -57,17 +111,16 @@ async function getGmw() {
     let m;
     while ((m = re.exec(html)) !== null) {
       const t = m[2].trim();
-      const u = m[1];
-      if (t.length > 8 && !t.includes('更多') && !t.includes('广告') && items.length < 4) {
-        items.push({ t: t, s: '时政要闻', src: '光明网', u: u });
+      if (t.length > 8 && !t.includes('更多') && items.length < 3) {
+        items.push({ t: t, s: '时政要闻', src: '光明网', u: m[1] });
       }
     }
     return items;
   } catch(e) { return []; }
 }
 
-// ====== 4. 南方周末 ======
-async function getNanfang() {
+// ====== 南方周末 ======
+async function getInfzm() {
   try {
     const html = await fetch('https://www.infzm.com/');
     const items = [];
@@ -83,8 +136,8 @@ async function getNanfang() {
   } catch(e) { return []; }
 }
 
-// ====== 5. 新浪财经 ======
-async function getSinaFinance() {
+// ====== 新浪财经 ======
+async function getSina() {
   try {
     const html = await fetch('https://finance.sina.com.cn/');
     const items = [];
@@ -92,16 +145,15 @@ async function getSinaFinance() {
     let m;
     while ((m = re.exec(html)) !== null) {
       const t = m[2].trim();
-      const u = m[1];
-      if (!t.includes('更多') && !t.includes('客户端') && !t.includes('广告') && items.length < 5) {
-        items.push({ t: t.substring(0, 50), s: '财经资讯', src: '新浪财经', u: u });
+      if (!t.includes('更多') && !t.includes('客户端') && items.length < 4) {
+        items.push({ t: t.substring(0, 50), s: '财经资讯', src: '新浪财经', u: m[1] });
       }
     }
     return items;
   } catch(e) { return []; }
 }
 
-// ====== 6. 股票数据 (东方财富) ======
+// ====== 股票数据 ======
 async function getStocks() {
   try {
     const json = await fetch('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001,0.399006,1.000688,1.000300,1.000016,1.000905,0.399001');
@@ -114,7 +166,7 @@ async function getStocks() {
   } catch(e) { return []; }
 }
 
-// ====== 7. 汇率 ======
+// ====== 汇率 ======
 async function getForex() {
   try {
     const json = await fetch('https://api.exchangerate-api.com/v4/latest/CNY');
@@ -125,29 +177,20 @@ async function getForex() {
   } catch(e) { return {}; }
 }
 
-// ====== 智能分类：先国际后按关键词细分 ======
+// ====== 智能分类 ======
 function classify(items) {
   const world=[], tech=[], china=[], finance=[], sports=[], entertain=[], health=[], other=[];
   for (const item of items) {
     const tt = item.t + ' ' + item.s;
-    // Tech
-    if (/AI|人工智能|科技|5G|6G|芯片|算力|软件|华为|数字|互联网|大模型|GPT|元宇宙|量子|卫星|航天|火箭|SpaceX|特斯拉|苹果|微软|谷歌|OpenAI|专利|算法|数据|区块链|自动化|智能|机器人|电动车|光伏|新能源|储能/.test(tt)) tech.push(item);
-    // Sports
-    else if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌/.test(tt)) sports.push(item);
-    // Entertainment
+    if (/NBA|英超|欧冠|中超|CBA|世界杯|奥运|足球|篮球|网球|F1|赛车|羽毛球|乒乓球|女排|梅西|C罗|詹姆斯|联赛|冠军|体育|比赛|决赛|金牌|金牌|银牌/.test(tt)) sports.push(item);
+    else if (/AI|人工智能|科技|5G|6G|芯片|算力|软件|华为|数字|互联网|大模型|GPT|元宇宙|量子|卫星|航天|火箭|SpaceX|特斯拉|苹果|微软|谷歌|OpenAI|专利|算法|数据|区块链|自动化|智能|机器人|电动车|光伏|新能源|储能/.test(tt)) tech.push(item);
     else if (/电影|票房|音乐|演唱会|综艺|游戏|明星|导演|电视剧|Netflix|迪士尼|B站|抖音|快手|综艺|舞台|广告|视频|直播|演出/.test(tt)) entertain.push(item);
-    // Health
     else if (/健康|养生|运动|饮食|睡眠|药|医院|疫苗|新冠|中医|营养|健身|减肥|体检|医保|医疗/.test(tt)) health.push(item);
-    // China markets / A股
-    else if (/A股|沪指|深指|北向|证监会|注册制|分红|新能源车|涨停|券商|基金|私募|公募|科创板|创业板|上证|深证|沪深|北交所|股份|股票|上市|退市/.test(tt)) china.push(item);
-    // Finance
-    else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI/.test(tt)) finance.push(item);
-    // World (国际)
+    else if (/A股|沪指|深指|北向|证监会|注册制|分红|涨停|券商|基金|私募|公募|科创板|创业板|上证|深证|沪深|北交所|股份|股票|上市|退市|财报|业绩/.test(tt)) china.push(item);
+    else if (/黄金|原油|金价|美联储|央行|汇率|贸易|逆差|美元|欧佩克|OPEC|通胀|加息|降息|期货|债券|信托|保险|银行|外汇|人民币|离岸|经济|GDP|CPI|财报|利润|营收/.test(tt)) finance.push(item);
     else if (/伊朗|古巴|特朗普|制裁|美国|德国|北约|中东|国际|石油|非盟|G20|以军|巴以|欧盟|俄罗斯|乌克兰|外交|撤军|欧洲|英国|法国|日本|韩国|朝鲜|印度|联合国|世贸|WTO|难民|移民|空袭|会谈|峰会|大使|外长|总统|国会|参议院|地震|海啸|间谍|爆炸|袭击|逮捕/.test(tt)) world.push(item);
-    // Misc
-    else if (/公积金|贷款|房地产|楼市|房价|租|房/.test(tt)) china.push(item);
-    else if (/蜜雪|外卖|排队|消费|购物|旅游|五一|假期|高速|公路/.test(tt)) other.push(item);
-    else world.push(item); // default international
+    else if (/公积金|贷款|房地产|楼市|房价|租房|消费|购物|旅游|五一|假期|高速|公路/.test(tt)) other.push(item);
+    else world.push(item);
   }
   return { world, tech, china, finance, sports, entertain, health, other };
 }
@@ -165,7 +208,7 @@ function buildPage(date, sections, stocks, weatherList, fxRates, stats) {
 
   function card(it, i) {
     const u = it.u || '#';
-    return `<div class="nc" onclick="window.open('${u.replace(/'/g, '%27')}','_blank')"><div class="nt"><span class="ni">${i+1}</span>${it.t}</div><div class="ns">${it.s}</div><div class="nm">📌 ${it.src}</div></div>`;
+    return `<div class="nc" onclick="window.open('${u.replace(/'/g, "%27")}','_blank')"><div class="nt"><span class="ni">${i+1}</span>${it.t}</div><div class="ns">${it.s}</div><div class="nm">📌 ${it.src}</div></div>`;
   }
   function sec(s) {
     let h = `<div class="se" id="s-${s.id}"><div class="sh"><span class="si">${s.icon}</span><span class="st">${s.title}</span><span class="scount">${s.items.length}</span></div>`;
@@ -175,7 +218,7 @@ function buildPage(date, sections, stocks, weatherList, fxRates, stats) {
   }
 
   const total = sections.reduce((a,s) => a + s.items.length, 0);
-  const stockRows = stocks.length ? stocks.map(s => `<div class="si2"><div class="sn">${s.n}</div><div class="sv">${s.v}</div><div class="sc ${s.cls}">${s.c}</div></div>`).join('') : 
+  const stockRows = stocks.length ? stocks.map(s => `<div class="si2"><div class="sn">${s.n}</div><div class="sv">${s.v}</div><div class="sc ${s.cls}">${s.c}</div></div>`).join('') :
     '<div class="si2" style="grid-column:1/-1;text-align:center;color:#6b7a8d">行情加载中</div>';
   const wRows = weatherList.map(f => `<div class="wd"><div class="wdn">${f.d}</div><div class="wdi">${f.i}</div><div class="wdt">${f.t}</div><div class="wdd">${f.c}</div></div>`).join('');
   const fkeys = ['USD','EUR','JPY','GBP','HKD','KRW'];
@@ -183,12 +226,12 @@ function buildPage(date, sections, stocks, weatherList, fxRates, stats) {
   const fRows = fkeys.map((k, i) => `<div class="fi"><div class="fp">${fpairs[i]}</div><div class="fr">${fxRates[k] || '--'}</div></div>`).join('');
   const secs = sections.map(s => sec(s)).join('');
 
-  const sourceList = ['同花顺','百度热搜','光明网','南方周末','新浪财经','东方财富','ExchangeRate-API'];
+  const sourceList = ['同花顺','华尔街见闻','财联社','第一财经','百度热搜','光明网','南方周末','新浪财经','东方财富'];
   const sourceStr = sourceList.join(' · ');
 
-  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>每日全球资讯早报 - ${date}</title><style>
+  return `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>每日全球资讯早报</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0c0f1a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6;min-height:100vh}
+body{background:#0c0f1a;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.6}
 .app{max-width:780px;margin:0 auto;padding:0 16px 40px}
 header{padding:24px 0 10px;border-bottom:1px solid rgba(42,48,69,0.4);margin-bottom:20px}
 .tb{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
@@ -196,13 +239,11 @@ header{padding:24px 0 10px;border-bottom:1px solid rgba(42,48,69,0.4);margin-bot
 nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 nav a{color:#8896a6;text-decoration:none;font-size:13px;padding:5px 14px;border-radius:14px;background:rgba(255,255,255,0.03);transition:all 0.15s}
 nav a:hover{background:rgba(59,130,246,0.12);color:#60a5fa}
-.se{background:#171c2b;border:1px solid rgba(42,48,69,0.5);border-radius:12px;padding:16px;margin-bottom:14px;transition:border-color 0.15s}
+.se{background:#161b2a;border:1px solid rgba(42,48,69,0.5);border-radius:12px;padding:16px;margin-bottom:14px;transition:border-color 0.15s}
 .se:hover{border-color:rgba(59,130,246,0.15)}
 .sh{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .si{font-size:20px;width:28px;text-align:center}.st{font-size:16px;font-weight:600;color:#f1f5f9}
 .scount{font-size:11px;background:rgba(99,102,241,0.1);color:#818cf8;padding:0 8px;border-radius:8px;line-height:20px}
-.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.tags span{background:rgba(59,130,246,0.05);color:#60a5fa;padding:2px 8px;border-radius:6px;font-size:11px}
 .nc{padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;margin:0 -4px;padding:10px 4px;border-radius:4px}
 .nc:last-child{border-bottom:none}.nc:hover{background:rgba(255,255,255,0.02)}
 .nt{font-size:14px;font-weight:500;color:#f1f5f9;margin-bottom:5px;display:flex;align-items:flex-start;gap:8px}
@@ -220,24 +261,21 @@ nav a:hover{background:rgba(59,130,246,0.12);color:#60a5fa}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .fi{background:rgba(255,255,255,0.02);border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center}
 .fp{font-size:13px;color:#94a3b8}.fr{font-size:14px;font-weight:600;color:#f1f5f9}
-.qb{padding:16px;text-align:center}.qt{font-size:12px;color:#6b7a8d;line-height:1.7}
 footer{margin-top:32px;padding:20px 0;text-align:center;border-top:1px solid rgba(42,48,69,0.4)}
 footer p{font-size:11px;color:#5a6a7d;margin-bottom:3px}
-.src-badge{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0}
-.src-badge span{background:rgba(255,255,255,0.02);color:#6b7a8d;padding:2px 8px;border-radius:6px;font-size:10px}
   </style></head><body><div class="app">
-  <header><div class="tb"><div class="date">📅 ${date}</div><div class="live">${total}条资讯 · ${stats.sources}个来源</div></div>
+  <header><div class="tb"><div class="date">📅 ${date}</div><div class="live">${total}条 · 聚合${stats.sources}个来源</div></div>
   <nav>${nav}</nav></header>
   <div style="display:flex;justify-content:space-between;align-items:center;padding:0 2px;margin-bottom:18px">
-    <div style="font-size:12px;color:#5a6a7d">点击标题可查看详情 →</div>
-    <div style="font-size:12px;color:#5a6a7d">💱 USD/CNY ${fxRates.USD || '--'}</div>
+    <div style="font-size:12px;color:#5a6a7d">点击标题查看详情</div>
+    <div style="font-size:12px;color:#5a6a7d">USD/CNY ${fxRates.USD || '--'}</div>
   </div>
   <div class="se" id="s-market"><div class="sh"><span class="si">📊</span><span class="st">全球指数</span><span class="scount">${stocks.length}</span></div><div class="sg">${stockRows}</div></div>
   <div class="se" id="s-weather"><div class="sh"><span class="si">🌤️</span><span class="st">泗阳天气</span></div><div class="w3d">${wRows}</div></div>
   ${secs}
   <div class="se" id="s-forex"><div class="sh"><span class="si">💱</span><span class="st">外汇汇率</span><span class="scount">6</span></div><div class="fg">${fRows}</div></div>
-  <div class="se" style="border-style:dashed"><div class="qb"><div class="qt">数据来源：${sourceStr} · 每日 08:00 / 12:00 / 18:00 / 22:00 自动更新</div></div></div>
-  <footer><p>📡 公开 · 免费 · 无广告 · 数据仅供参考</p></footer>
+  <div class="se" style="border-style:dashed"><div style="padding:16px;text-align:center;font-size:11px;color:#5a6a7d;line-height:1.7">${sourceStr}<br>每日 08:00 / 12:00 / 18:00 / 22:00 自动更新 · 公开 · 免费 · 仅供参考</div></div>
+  <footer><p>📡 数据仅供个人参考 · 不构成投资建议</p></footer>
 </div></body></html>`;
 }
 
@@ -245,25 +283,23 @@ async function main() {
   const date = getDate();
   console.log('=== 多源聚合新闻 (' + date + ') ===');
 
-  // Fetch all
-  const [thsItems, baiduHot, gmwItems, nanfangItems, sinaItems, stocks, fxRates] = await Promise.all([
-    getTHS(), getBaiduHot(), getGmw(), getNanfang(), getSinaFinance(),
+  const [ths, wscn, cls, yicai, baidu, gmw, infzm, sina, stocks, fx] = await Promise.all([
+    getTHS(), getWallStreet(), getCailian(), getYicai(), getBaiduHot(), getGmw(), getInfzm(), getSina(),
     getStocks(), getForex()
   ]);
 
-  // Print source stats
   const sources = {};
-  [thsItems, baiduHot, gmwItems, nanfangItems, sinaItems].forEach(arr => {
+  [ths, wscn, cls, yicai, baidu, gmw, infzm, sina].forEach(arr => {
     arr.forEach(i => { sources[i.src] = (sources[i.src] || 0) + 1; });
   });
-  console.log('来源分布:');
-  Object.entries(sources).forEach(([k,v]) => console.log(`  ${k}: ${v}条`));
+  console.log('\n来源:');
+  Object.entries(sources).forEach(([k,v]) => console.log(`  ${k}: ${v}`));
+  console.log('  股票:', stocks.length > 0 ? 'live ✅' : 'fallback');
+  console.log('  汇率:', fx.USD ? 'live ✅' : 'fallback');
 
-  // Merge and classify
-  const allNews = [...thsItems, ...baiduHot, ...gmwItems, ...nanfangItems, ...sinaItems];
+  const allNews = [...ths, ...wscn, ...cls, ...yicai, ...baidu, ...gmw, ...infzm, ...sina];
   const classified = classify(allNews);
 
-  // Deduplicate across categories
   const seen = new Set();
   for (const key of Object.keys(classified)) {
     classified[key] = classified[key].filter(item => {
@@ -274,67 +310,44 @@ async function main() {
     });
   }
 
-  // Print classified counts
+  console.log('\n分类:');
   let totalItems = 0;
-  console.log('\n分类分布:');
   Object.entries(classified).forEach(([k,v]) => {
-    if (v.length) {
-      console.log(`  ${k}: ${v.length}条`);
-      totalItems += v.length;
-    }
+    if (v.length && k !== 'other') { console.log(`  ${k}: ${v}`); totalItems += v.length; }
   });
 
-  // Build sections (pad if needed)
-  const defWorld = [{t:'国际新闻',s:'当前热点实时更新中',src:'系统'}];
-  const defTech = [{t:'科技资讯',s:'科技行业最新动态',src:'系统'}];
-  const defChina = [{t:'A股市场',s:'沪深两市实时行情',src:'系统'}];
-  const defFinance = [{t:'财经资讯',s:'宏观经济与金融市场',src:'系统'}];
-  const defSports = [{t:'体育赛事',s:'最新比赛结果',src:'系统'}];
-  const defEntertain = [{t:'文娱动态',s:'影视音乐最新资讯',src:'系统'}];
-  const defHealth = [{t:'健康生活',s:'养生保健知识',src:'系统'}];
-
-  function pad(arr, fb, min) {
-    if (arr.length >= min) return arr;
-    return arr.concat(fb.slice(0, 0));
-  }
-
   const sections = [
-    { id:'world', title:'国际要闻', icon:'🌍', tags:[], items: pad(classified.world, defWorld, 2) },
-    { id:'tech', title:'科技动态', icon:'💻', tags:[], items: pad(classified.tech, defTech, 1) },
-    { id:'china', title:'A股/民生', icon:'📈', tags:[], items: pad([...classified.china, ...classified.other], defChina, 1) },
-    { id:'finance', title:'财经焦点', icon:'💰', tags:[], items: pad(classified.finance, defFinance, 1) },
-    { id:'sports', title:'体育赛事', icon:'⚽', tags:[], items: pad(classified.sports, defSports, 1) },
-    { id:'entertain', title:'文娱热点', icon:'🎬', tags:[], items: pad(classified.entertain, defEntertain, 1) },
-    { id:'health', title:'健康生活', icon:'💪', tags:[], items: pad(classified.health, defHealth, 1) },
+    { id:'world', title:'国际要闻', icon:'🌍', tags:[], items: classified.world.length > 1 ? classified.world : classified.world.concat([{t:'国际新闻动态',s:'多源实时聚合',src:'系统'}]) },
+    { id:'tech', title:'科技动态', icon:'💻', tags:[], items: classified.tech.length > 1 ? classified.tech : classified.tech.concat([{t:'科技前沿',s:'关注AI与数字产业',src:'系统'}]) },
+    { id:'china', title:'A股/民生', icon:'📈', tags:[], items: (classified.china.length + classified.other.length) > 1 ? [...classified.china, ...classified.other] : [{t:'A股市场',s:'沪深两市动态',src:'系统'}] },
+    { id:'finance', title:'财经焦点', icon:'💰', tags:[], items: classified.finance.length > 1 ? classified.finance : classified.finance.concat([{t:'金融市场',s:'宏观经济与资本动态',src:'系统'}]) },
+    { id:'sports', title:'体育赛事', icon:'⚽', tags:[], items: classified.sports.length > 1 ? classified.sports : [{t:'体育资讯',s:'最新赛事情报',src:'系统'}] },
+    { id:'entertain', title:'文娱热点', icon:'🎬', tags:[], items: classified.entertain.length > 1 ? classified.entertain : [{t:'文化娱乐',s:'影视音乐游戏动态',src:'系统'}] },
+    { id:'health', title:'健康生活', icon:'💪', tags:[], items: classified.health.length > 1 ? classified.health : [{t:'健康养生',s:'医疗健康资讯',src:'系统'}] },
     { id:'today', title:'历史上的今天', icon:'📅', tags:[],
       items:[
-        {t:'1519年 — 达·芬奇逝世',s:'意大利文艺复兴巨匠，《蒙娜丽莎》《最后的晚餐》作者。',src:'历史百科'},
-        {t:'1957年 — 麦卡锡逝世',s:'美国参议员约瑟夫·麦卡锡，麦卡锡主义主导者。',src:'历史百科'},
-        {t:'2003年 — 中国海军首次环球航行',s:'青岛号驱逐舰和太仓号补给舰组成的编队启航。',src:'人民海军'}
+        {t:'1519 — 达·芬奇逝世',s:'意大利文艺复兴巨匠，《蒙娜丽莎》《最后的晚餐》作者',src:'历史百科'},
+        {t:'1957 — 麦卡锡逝世',s:'美国参议员约瑟夫·麦卡锡，麦卡锡主义主导者',src:'历史百科'},
+        {t:'2003 — 中国海军首次环球航行',s:'青岛号驱逐舰和太仓号补给舰编队启航',src:'人民海军'}
       ]
     }
   ];
 
   const total = sections.reduce((a,s) => a + s.items.length, 0);
-  console.log('\n展示总条数:', total);
+  console.log('\n展示:', total, '条 | 来源:', Object.keys(sources).length);
+  console.log('  同花顺:', ths.length, '| 华尔街见闻:', wscn.length, '| 财联社:', cls.length);
+  console.log('  第一财经:', yicai.length, '| 百度热搜:', baidu.length, '| 光明网:', gmw.length);
+  console.log('  南方周末:', infzm.length, '| 新浪财经:', sina.length);
 
-  const defStocks = stocks.length ? stocks : [
-    {n:'上证指数',v:'--',c:'--',cls:'flat'},{n:'深证成指',v:'--',c:'--',cls:'flat'},
-    {n:'创业板指',v:'--',c:'--',cls:'flat'},{n:'科创50',v:'--',c:'--',cls:'flat'},
-    {n:'沪深300',v:'--',c:'--',cls:'flat'},{n:'上证50',v:'--',c:'--',cls:'flat'},
-    {n:'中证500',v:'--',c:'--',cls:'flat'},{n:'深证成指',v:'--',c:'--',cls:'flat'}
-  ];
-  const defFx = fxRates.USD ? fxRates : { USD:'6.85', EUR:'8.00', JPY:'0.043', GBP:'9.26', HKD:'0.87', KRW:'0.0046' };
-  const weatherList = [
-    {d:'今天',i:'🌧️',t:'14~17°C',c:'小雨转阴'},
-    {d:'明天',i:'🌫️',t:'11~17°C',c:'雾转阵雨'},
-    {d:'后天',i:'☀️',t:'10~25°C',c:'晴'}
-  ];
+  const html = buildPage(date, sections,
+    stocks.length ? stocks : [{n:'上证指数',v:'--',c:'--',cls:'flat'},{n:'深证成指',v:'--',c:'--',cls:'flat'},{n:'创业板指',v:'--',c:'--',cls:'flat'},{n:'科创50',v:'--',c:'--',cls:'flat'}],
+    [{d:'今天',i:'🌧️',t:'14~17°C',c:'小雨转阴'},{d:'明天',i:'🌫️',t:'11~17°C',c:'雾转阵雨'},{d:'后天',i:'☀️',t:'10~25°C',c:'晴'}],
+    fx.USD ? fx : { USD:'6.85',EUR:'8.00',JPY:'0.043',GBP:'9.26',HKD:'0.87',KRW:'0.0046' },
+    { sources: Object.keys(sources).length }
+  );
 
-  const activeSources = Object.keys(sources).length;
-  const html = buildPage(date, sections, defStocks, weatherList, defFx, { sources: activeSources });
   fs.writeFileSync('index.html', html, 'utf8');
-  console.log('✅ 已写入 index.html (' + html.length + ' bytes)');
+  console.log('\n✅ 生成:', html.length, 'bytes');
 }
 
 main().catch(e => { console.error('Fatal:', e.message); process.exit(1); });
