@@ -22,24 +22,27 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Collect main news
-        run: timeout 120 python3 .github/scripts/fetch_news.py || echo 'WARN: main collector failed'
+      - name: Python news collector (main 36 sources)
+        run: timeout 150 python3 .github/scripts/fetch_news.py || echo 'MAIN_COLLECTOR_FAILED'
 
-      - name: Collect RSS
-        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'WARN: RSS collector failed'
+      - name: RSS collector (international sources)
+        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'RSS_COLLECTOR_FAILED'
 
-      - name: Collect vertical
-        run: timeout 120 python3 .github/scripts/fetch_more.py || echo 'WARN: vertical collector failed'
+      - name: Vertical collector (Zhihu/Douban/GitHub/sspai)
+        run: timeout 120 python3 .github/scripts/fetch_more.py || echo 'MORE_COLLECTOR_FAILED'
 
-      - name: Merge news data
+      - name: Merge all collectors
         run: python3 .github/scripts/merge_news.py
 
-      - name: Build page
+      - name: Python page builder
         working-directory: ./
         run: python3 .github/scripts/generate_site.py
 
