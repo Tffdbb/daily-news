@@ -6,15 +6,19 @@
     <title>每日全球资讯早报</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --card: #1e293b;
+            --bg: #0c0f1a;
+            --card: #1a1f2e;
+            --card-hover: #232a3d;
             --accent: #3b82f6;
             --accent-light: #60a5fa;
+            --accent2: #a78bfa;
             --text: #f1f5f9;
-            --muted: #94a3b8;
-            --border: #334155;
+            --muted: #8896a6;
+            --border: #2a3045;
             --green: #22c55e;
             --red: #ef4444;
+            --gold: #f59e0b;
+            --cyan: #06b6d4;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -22,143 +26,393 @@
             background: var(--bg);
             color: var(--text);
             line-height: 1.7;
-            min-height: 100vh;
         }
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        header { text-align: center; padding: 40px 0 30px; border-bottom: 1px solid var(--border); margin-bottom: 30px; }
-        header h1 {
-            font-size: 28px; font-weight: 700;
-            background: linear-gradient(135deg, var(--accent-light), #a78bfa);
+
+        /* Top Nav Bar */
+        .topbar {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(12,15,26,0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 56px;
+        }
+        .topbar .logo {
+            font-size: 18px; font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-light), var(--accent2));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        header .date { color: var(--muted); font-size: 14px; margin-top: 8px; }
-        header .status {
-            display: inline-block; margin-top: 12px; padding: 4px 14px; border-radius: 20px; font-size: 13px;
+        .topbar .nav { display: flex; gap: 8px; }
+        .topbar .nav a {
+            color: var(--muted); text-decoration: none; font-size: 13px; padding: 6px 12px;
+            border-radius: 6px; transition: 0.2s;
+        }
+        .topbar .nav a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+        .container { max-width: 900px; margin: 0 auto; padding: 24px 20px; }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            padding: 50px 0 36px;
+        }
+        .hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 6px; }
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent-light), var(--accent2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero .sub {
+            color: var(--muted); font-size: 14px;
+            display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
+        }
+        .hero .sub .date-badge {
+            padding: 4px 14px; border-radius: 20px; font-size: 13px;
+            background: rgba(59,130,246,0.15); color: var(--accent-light);
+        }
+        .hero .sub .status-badge {
+            padding: 4px 14px; border-radius: 20px; font-size: 13px;
             background: rgba(34,197,94,0.15); color: var(--green);
         }
-        .section { background: var(--card); border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid var(--border); }
+
+        /* Section Cards */
+        .section {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            transition: 0.2s;
+        }
+        .section:hover { border-color: rgba(59,130,246,0.3); }
         .section-title {
-            font-size: 18px; font-weight: 600; margin-bottom: 16px; padding-bottom: 10px;
-            border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 16px; padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
         }
+        .section-title .left { display: flex; align-items: center; gap: 10px; }
+        .section-title .left h2 { font-size: 17px; font-weight: 600; }
         .section-title .tag {
-            font-size: 12px; padding: 2px 10px; border-radius: 12px;
-            background: rgba(59,130,246,0.2); color: var(--accent-light);
+            font-size: 11px; padding: 2px 10px; border-radius: 20px;
+            background: rgba(59,130,246,0.15); color: var(--accent-light);
+            white-space: nowrap;
         }
-        .news-item { padding: 12px 0; border-bottom: 1px solid rgba(51,65,85,0.5); }
+
+        /* News items */
+        .news-item {
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(42,48,69,0.5);
+            transition: 0.15s;
+            cursor: default;
+        }
         .news-item:last-child { border-bottom: none; }
-        .news-item .title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
-        .news-item .summary { font-size: 13px; color: var(--muted); }
-        .news-item .source { font-size: 11px; color: var(--muted); margin-top: 4px; display: inline-block; }
-        .market-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 12px; margin-top: 8px; }
-        .market-item { background: rgba(15,23,42,0.5); border-radius: 8px; padding: 12px 14px; text-align: center; }
-        .market-item .name { font-size: 12px; color: var(--muted); }
-        .market-item .value { font-size: 18px; font-weight: 600; margin: 4px 0; }
-        .market-item .change { font-size: 13px; }
+        .news-item:hover { padding-left: 8px; }
+        .news-item .title {
+            font-size: 15px; font-weight: 500;
+            margin-bottom: 4px;
+            display: flex; gap: 8px;
+        }
+        .news-item .title .dot {
+            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--accent); margin-top: 10px; flex-shrink: 0;
+        }
+        .news-item .summary { font-size: 13px; color: var(--muted); margin-left: 14px; }
+        .news-item .meta {
+            margin-top: 6px; margin-left: 14px;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+        .news-item .meta .source {
+            font-size: 11px; color: var(--muted);
+            background: rgba(255,255,255,0.04); padding: 2px 10px; border-radius: 10px;
+        }
+
+        /* Market Grid */
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .market-item {
+            background: rgba(12,15,26,0.5);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            border: 1px solid transparent;
+            transition: 0.2s;
+        }
+        .market-item:hover { border-color: var(--border); }
+        .market-item .name { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+        .market-item .value { font-size: 20px; font-weight: 700; margin: 2px 0; }
+        .market-item .change { font-size: 13px; font-weight: 500; }
         .up { color: var(--red); }
         .down { color: var(--green); }
-        footer { text-align: center; padding: 30px; color: var(--muted); font-size: 13px; }
-        @media (max-width:600px) {
+        .flat { color: var(--muted); }
+
+        /* FX Grid */
+        .fx-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .fx-item {
+            background: rgba(12,15,26,0.5);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+        }
+        .fx-item .pair { font-size: 13px; color: var(--muted); }
+        .fx-item .rate { font-size: 18px; font-weight: 600; margin: 2px 0; }
+
+        /* Weather Widget */
+        .weather-widget {
+            display: flex; align-items: center; gap: 16px;
+            background: rgba(6,182,212,0.06);
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-top: 8px;
+        }
+        .weather-widget .city { font-weight: 600; }
+        .weather-widget .temp { font-size: 24px; font-weight: 700; }
+        .weather-widget .desc { color: var(--muted); font-size: 13px; }
+
+        /* Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+        .stat-card .num { font-size: 24px; font-weight: 700; color: var(--accent-light); }
+        .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--muted);
+            font-size: 13px;
+            border-top: 1px solid var(--border);
+            margin-top: 10px;
+        }
+        footer a { color: var(--accent-light); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Substack style quote */
+        .highlight-box {
+            background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(167,139,250,0.06));
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 16px 20px;
+            margin: 16px 0 0;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        /* Tags */
+        .topic-tags {
+            display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;
+        }
+        .topic-tags span {
+            font-size: 11px; padding: 3px 10px; border-radius: 12px;
+            background: rgba(59,130,246,0.1); color: var(--accent-light);
+        }
+
+        @media (max-width: 600px) {
             .container { padding: 12px; }
-            .section { padding: 16px; }
-            header h1 { font-size: 22px; }
+            .hero h1 { font-size: 24px; }
+            .section { padding: 16px; border-radius: 12px; }
             .market-grid { grid-template-columns: repeat(2,1fr); }
+            .fx-grid { grid-template-columns: repeat(2,1fr); }
+            .topbar .nav a { font-size: 12px; padding: 4px 8px; }
+            .stats-row { grid-template-columns: repeat(2,1fr); }
         }
     </style>
 </head>
 <body>
+
+<div class="topbar">
+    <div class="logo">每日早报</div>
+    <div class="nav">
+        <a href="#" onclick="scrollToSection('today')">今日</a>
+        <a href="#" onclick="scrollToSection('market')">行情</a>
+        <a href="https://github.com/Tffdbb/daily-news" target="_blank">GitHub</a>
+    </div>
+</div>
+
 <div class="container">
-    <header>
-        <h1>每日全球资讯早报</h1>
-        <div class="date" id="currentDate">加载中...</div>
-        <div class="status">今日已更新</div>
-    </header>
+    <div class="hero">
+        <h1><span>每日全球资讯早报</span></h1>
+        <div class="sub">
+            <span class="date-badge" id="currentDate">--</span>
+            <span class="status-badge">今日已更新</span>
+        </div>
+    </div>
+
+    <!-- Hot stats -->
+    <div class="stats-row" id="statsRow"></div>
+
     <div id="newsContent"></div>
+
     <footer>
-        <p>数据来源：财联社、36氪、新浪财经、央视新闻</p>
-        <p>每日 8:00 自动更新 | 由 OpenClaw AI 驱动</p>
+        <p>数据来源：财联社 · 36氪 · 新浪财经 · 央视新闻 · 新华社</p>
+        <p>每日 8:00 更新 · 由 <a href="https://github.com/Tffdbb/daily-news" target="_blank">OpenClaw AI</a> 驱动 · <span id="footerDate"></span></p>
+        <p style="margin-top:8px;font-size:11px;">反馈建议 · 联系作者</p>
     </footer>
 </div>
 
 <script>
 const data = {
     date: "2026年5月2日 星期六",
+    hotStats: [
+        { num: "2484万", label: "铁路单日旅客(历史新高)" },
+        { num: "+55.6%", label: "高速充电量同比" },
+        { num: "2303万", label: "充电量(千瓦时)" },
+        { num: "11718万", label: "累计发售车票" }
+    ],
     sections: [
         {
+            id: "world",
             title: "国际要闻",
-            icon: "\uD83C\uDF0D",
+            icon: "🌍",
+            tags: ["中东局势","中美关系","全球经济"],
             items: [
-                { t: "伊朗外长称仍愿同美国进行外交对话", s: "伊朗外交部长阿拉格齐表示，尽管局势紧张，伊朗仍愿通过对话解决分歧。", src: "\u8D22\u8054\u793E" },
-                { t: "古巴举行五一劳动节集会，50余万民众呼吁保卫祖国", s: "恰逢美国宣布加大制裁，古巴民众以大规模集会表达对国家主权的坚定捍卫。", src: "CCTV\u56FD\u9645\u65F6\u8BAF" },
-                { t: "特朗普称美国已出售1亿桶委内瑞拉石油，计划翻倍", s: "这些石油被运往得克萨斯州进行加工，计划在未来一个月内将数量翻倍。", src: "\u4E2D\u56FD\u65B0\u95FB\u7F51" },
-                { t: "日本央行前行长黑田东彦：2%通胀目标已实现", s: "黑田东彦表示日本不需要财政扩张或货币宽松，央行暂不加息是正确的决定。", src: "\u8D22\u8054\u793E" },
-                { t: "特朗普扩大对古巴制裁，派航母赴古巴海岸", s: "5月1日签署行政命令，将林肯号航母部署至古巴海岸。", src: "\u592E\u89C6\u65B0\u95FB" }
+                { t: "伊朗外长称仍愿同美国进行外交对话", s: "伊朗外交部长阿拉格齐表示，尽管局势紧张，伊朗仍愿通过对话解决分歧。", src: "财联社" },
+                { t: "古巴举行五一劳动节集会，50余万民众呼吁保卫祖国", s: "恰逢美国宣布加大制裁，古巴民众以大规模集会表达对国家主权的坚定捍卫。", src: "CCTV国际时讯" },
+                { t: "特朗普称美国已出售1亿桶委内瑞拉石油，计划翻倍", s: "这些石油被运往得克萨斯州进行加工，计划在未来一个月内将数量翻倍。", src: "中国新闻网" },
+                { t: "日本央行前行长黑田东彦：2%通胀目标已实现", s: "黑田东彦表示日本不需要财政扩张或货币宽松，央行暂不加息是正确的决定。", src: "财联社" },
+                { t: "特朗普扩大对古巴制裁，派航母赴古巴海岸", s: "5月1日签署行政命令，将\"亚伯拉罕·林肯\"号航母部署至古巴海岸。", src: "央视新闻" }
             ]
         },
         {
+            id: "tech",
             title: "科技动态",
-            icon: "\uD83D\uDCBB",
+            icon: "💻",
+            tags: ["AI","机器人","医药"],
             items: [
-                { t: "伯克希尔股东大会即将召开，新CEO主导问答环节", s: "巴菲特仍以董事长身份出席，但问答环节由新CEO格雷格阿贝尔承担核心发言职责。", src: "36\u6C2A" },
-                { t: "我国首个算电协同绿电直供项目投运", s: "宁夏中卫50万千瓦光伏电站正式投运，实现从沙漠风光电到数字算力的直连直通。", src: "\u592E\u89C6\u65B0\u95FB" },
-                { t: "五角大楼与七家AI巨头签约", s: "包括SpaceX、OpenAI、谷歌、英伟达等，将AI部署至国防部机密网络。", src: "36\u6C2A" }
+                { t: "伯克希尔股东大会即将召开，新CEO主导问答环节", s: "巴菲特仍以董事长身份出席，但问答环节由新任CEO格雷格·阿贝尔承担核心发言职责。", src: "36氪" },
+                { t: "我国首个算电协同绿电直供项目投运", s: "宁夏中卫50万千瓦光伏电站正式投运，实现从沙漠风光电到数字算力的直连直通。", src: "央视新闻" },
+                { t: "五角大楼与七家AI巨头签约", s: "包括SpaceX、OpenAI、谷歌、英伟达等，将AI部署至国防部机密网络。", src: "36氪" }
             ]
         },
         {
+            id: "china",
             title: "中国市场",
-            icon: "\uD83C\uDDE8\uD83C\uDDF3",
+            icon: "🇨🇳",
+            tags: ["五一经济","新能源","私募调仓"],
             items: [
-                { t: "五一假期首日高速公路充电量同比增长55.6%", s: "充电量达2303万千瓦时，服务次数超94.63万次，刷新历史记录。", src: "\u8D22\u8054\u793E" },
-                { t: "5月1日铁路发送旅客2484万人次创历史新高", s: "5月2日预计发送1970万人次，已累计发售五一车票11718万张。", src: "\u4EBA\u6C11\u65E5\u62A5" },
-                { t: "上海迎来首票非洲20国零关税商品", s: "516吨埃及鲜橙通过海运入境，在上海外高桥港区海关通关放行。", src: "\u65B0\u534E\u793E" },
-                { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "\u65B0\u6D6A\u8D22\u7ECF" },
-                { t: "百亿私募一季报调仓换股曝光", s: "高毅邓晓峰减持京东方A、TCL科技；冯柳减持海康威视加仓瑞丰新材。", src: "\u4E2D\u56FD\u57FA\u91D1\u62A5" }
+                { t: "五一假期首日高速公路充电量同比增长55.6%", s: "充电量达2303万千瓦时，服务次数超94.63万次，均刷新历史记录。", src: "财联社" },
+                { t: "5月1日铁路发送旅客2484万人次创历史新高", s: "5月2日预计发送1970万人次，已累计发售五一车票11718万张。", src: "人民日报" },
+                { t: "上海迎来首票非洲20国零关税商品", s: "516吨埃及鲜橙通过海运入境，在上海外高桥港区海关通关放行。", src: "新华社" },
+                { t: "巴西石油公司Q1对美出口降至零，62%运往中国", s: "印度成为第二大目的地，接收总量约15%。", src: "新浪财经" },
+                { t: "百亿私募一季报调仓换股曝光", s: "高毅邓晓峰减持京东方A、TCL科技；冯柳减持海康威视加仓瑞丰新材。", src: "中国基金报" }
             ]
         },
         {
+            id: "market",
             title: "市场行情",
-            icon: "\uD83D\uDCCA",
+            icon: "📊",
             note: "今日为周末，全球主要金融市场休市",
             markets: [
-                ["沪指","3304","+0.2%"], ["深指","10786","-0.1%"], ["恒指","18235","-0.4%"],
-                ["美元/人民币","7.24","--"], ["美元/日元","154.8","--"]
+                { name: "沪指", value: "3304", change: "+0.2%", cls: "up" },
+                { name: "深指", value: "10786", change: "-0.1%", cls: "down" },
+                { name: "恒指", value: "18235", change: "-0.4%", cls: "down" },
+                { name: "道指", value: "--", change: "休市", cls: "flat" },
+                { name: "纳指", value: "--", change: "休市", cls: "flat" },
+                { name: "标普500", value: "--", change: "休市", cls: "flat" }
+            ],
+            fx: [
+                { pair: "美元/人民币", rate: "7.24" },
+                { pair: "美元/日元", rate: "154.8" },
+                { pair: "欧元/美元", rate: "1.08" }
             ]
         }
-    ]
+    ],
+    weather: { city: "北京", temp: "22°C", desc: "晴，空气质量良" }
 };
 
+// 日期
 const today = new Date();
 const beijing = new Date(today.getTime() + 8*3600000);
 const y = beijing.getUTCFullYear(), m = beijing.getUTCMonth()+1, d = beijing.getUTCDate();
 const weekdays = ["日","一","二","三","四","五","六"];
-document.getElementById("currentDate").textContent =
-    y+"年"+m+"月"+d+"日 星期"+weekdays[beijing.getUTCDay()];
+document.getElementById("currentDate").textContent = y+"年"+m+"月"+d+"日 星期"+weekdays[beijing.getUTCDay()];
+document.getElementById("footerDate").textContent = "更新于 "+y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0")+" 14:30";
 
+// Stats
+let statsHtml = "";
+for (const s of data.hotStats) {
+    statsHtml += '<div class="stat-card"><div class="num">'+s.num+'</div><div class="label">'+s.label+'</div></div>';
+}
+document.getElementById("statsRow").innerHTML = statsHtml;
+
+// Sections
 let html = "";
-for (const sec of data.sections) {
-    html += '<div class="section"><div class="section-title">'+sec.icon+" "+sec.title;
-    if (sec.items) html += ' <span class="tag">'+sec.items.length+"条</span>";
-    html += "</div>";
-    if (sec.note) html += '<p style="color:var(--muted);font-size:13px;margin-bottom:12px;">'+sec.note+"</p>";
+for (let si = 0; si < data.sections.length; si++) {
+    const sec = data.sections[si];
+    html += '<div class="section" id="sec-'+sec.id+'">';
+    html += '<div class="section-title"><div class="left"><span>'+sec.icon+'</span><h2>'+sec.title+'</h2></div><span class="tag">'+(sec.items ? sec.items.length+'条' : '')+'</span></div>';
+    
+    // Tags
+    if (sec.tags) {
+        html += '<div class="topic-tags">';
+        for (const tag of sec.tags) html += '<span>#'+tag+'</span>';
+        html += '</div>';
+    }
+    
+    if (sec.note) html += '<p style="color:var(--muted);font-size:13px;margin-bottom:12px;">'+sec.note+'</p>';
+    
     if (sec.items) {
         for (const item of sec.items) {
-            html += '<div class="news-item"><div class="title">'+item.t+'</div><div class="summary">'+item.s+'</div><div class="source">\u6765\u6E90\uFF1A'+item.src+"</div></div>";
+            html += '<div class="news-item">';
+            html += '<div class="title"><span class="dot"></span>'+item.t+'</div>';
+            html += '<div class="summary">'+item.s+'</div>';
+            html += '<div class="meta"><span class="source">'+item.src+'</span></div>';
+            html += '</div>';
         }
     }
+    
     if (sec.markets) {
         html += '<div class="market-grid">';
         for (const m of sec.markets) {
-            let cls = "flat";
-            if (m[2].startsWith("+")) cls = "up";
-            else if (m[2].startsWith("-")) cls = "down";
-            html += '<div class="market-item"><div class="name">'+m[0]+'</div><div class="value">'+m[1]+'</div><div class="change '+cls+'">'+m[2]+"</div></div>";
+            html += '<div class="market-item"><div class="name">'+m.name+'</div><div class="value">'+m.value+'</div><div class="change '+m.cls+'">'+m.change+'</div></div>';
         }
-        html += "</div>";
+        html += '</div>';
     }
-    html += "</div>";
+    
+    if (sec.fx) {
+        html += '<div style="margin-top:14px;"><p style="font-size:13px;color:var(--muted);margin-bottom:8px;">💱 主要汇率</p><div class="fx-grid">';
+        for (const f of sec.fx) {
+            html += '<div class="fx-item"><div class="pair">'+f.pair+'</div><div class="rate">'+f.rate+'</div></div>';
+        }
+        html += '</div></div>';
+    }
+    
+    html += '</div>';
 }
+
+// Weather widget (attach to last section)
+html += '<div class="section"><div class="section-title"><div class="left"><span>🌤️</span><h2>今日天气</h2></div></div>';
+html += '<div class="weather-widget"><div><div class="city">'+data.weather.city+'</div><div class="desc">'+data.weather.desc+'</div></div><div class="temp">'+data.weather.temp+'</div></div>';
+html += '<div class="highlight-box">💡 五一假期出行高峰，注意交通路况和天气变化。北京今日适合出游。</div>';
+html += '</div>';
+
 document.getElementById("newsContent").innerHTML = html;
+
+function scrollToSection(id) {
+    const el = document.getElementById('sec-'+id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 </script>
 </body>
 </html>
