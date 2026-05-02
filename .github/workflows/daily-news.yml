@@ -1,0 +1,37 @@
+name: Daily News Update
+
+on:
+  schedule:
+    # 每天北京时间 8:00, 12:00, 18:00, 22:00 更新
+    - cron: '0 0,4,10,14 * * *'
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch news and generate site
+        run: |
+          node .github/scripts/generate_site_gh.js
+        env:
+          # 可选：如果你有 NewsAPI key，填这里
+          NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+
+      - name: Commit and push
+        run: |
+          git config user.name "Daily News Bot"
+          git config user.email "bot@daily-news.local"
+          git add index.html
+          git diff --quiet && git diff --staged --quiet || \
+            git commit -m "每日资讯自动更新 $(TZ='Asia/Shanghai' date '+%Y-%m-%d %H:%M')" && \
+            git push
