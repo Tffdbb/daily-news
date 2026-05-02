@@ -15,33 +15,90 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  # ─── 并行采集器 ───
+  collect-news:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect main news (36 domestic sources)
+        run: timeout 150 python3 .github/scripts/fetch_news.py || echo 'WARN: main collector timed out'
+      - name: Upload news artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: news_data
+          path: news_data.json
+          retention-days: 1
+          if-no-files-found: warn
+
+  collect-rss:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect RSS international sources
+        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'WARN: RSS collector failed'
+      - name: Upload rss artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rss_data
+          path: rss_news.json
+          retention-days: 1
+          if-no-files-found: warn
+
+  collect-more:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect vertical sources
+        run: timeout 120 python3 .github/scripts/fetch_more.py || echo 'WARN: vertical collector failed'
+      - name: Upload more artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: more_data
+          path: more_news.json
+          retention-days: 1
+          if-no-files-found: warn
+
+  # ─── 合并+发布 ───
+  merge-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [collect-news, collect-rss, collect-more]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Python news collector
-        run: |
-          timeout 180 python3 .github/scripts/fetch_news.py || (python3 -c 'import json; json.dump({"news":[],"labels":[],"stocks":[],"forex":{}},open("news_data.json","w"))' && echo 'FETCH_EMPTY: created fallback news_data.json')
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./
 
-      - name: Python page builder
+      - name: Move artifacts to root
+        run: |
+          ls -la */ || true
+          [ -f news_data/news_data.json ] && cp news_data/news_data.json news_data.json 2>/dev/null || true
+          [ -f rss_data/rss_news.json ] && cp rss_data/rss_news.json rss_news.json 2>/dev/null || true
+          [ -f more_data/more_news.json ] && cp more_data/more_news.json more_news.json 2>/dev/null || true
+          ls -la *.json 2>/dev/null || echo 'No json files'
+
+      - name: Merge news data
+        run: python3 .github/scripts/merge_news.py
+
+      - name: Build page
         working-directory: ./
         run: python3 .github/scripts/generate_site.py
 
       - name: Create .nojekyll
         run: touch .nojekyll
 
-      - name: Upload artifact
+      - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
