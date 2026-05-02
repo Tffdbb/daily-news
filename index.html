@@ -163,7 +163,7 @@
         <a href="#" onclick="scrollToSection('china')">市场</a>
         <a href="#" onclick="scrollToSection('market')">行情</a>
         <a href="#" onclick="scrollToSection('crypto')">加密</a>
-        <a href="#" onclick="scrollToSection('weather')">天气</a>
+        <a href="#" onclick="scrollToSection('finance')">财经</a><a href="#" onclick="scrollToSection('sports')">体育</a><a href="#" onclick="scrollToSection('entertain')">娱乐</a><a href="#" onclick="scrollToSection('health')">健康</a><a href="#" onclick="scrollToSection('weather')">天气</a>
         <a href="https://github.com/Tffdbb/daily-news" target="_blank">GitHub</a>
     </div>
     <div class="live-indicator"><span class="live-dot"></span>实时</div>
@@ -181,7 +181,7 @@
             <a href="#" onclick="scrollToSection('crypto')">₿ 加密货币</a>
             <a href="#" onclick="scrollToSection('forex')">💱 汇率</a>
             <a href="#" onclick="scrollToSection('world')">🌍 新闻</a>
-            <a href="#" onclick="scrollToSection('weather')">🌤️ 天气</a>
+            <a href="#" onclick="scrollToSection('finance')">💰 财经</a><a href="#" onclick="scrollToSection('sports')">⚽ 体育</a><a href="#" onclick="scrollToSection('entertain')">🎬 娱乐</a><a href="#" onclick="scrollToSection('weather')">🌤️ 天气</a>
         </div>
     </div>
 
@@ -229,7 +229,53 @@ const data = {
             ]
         }
     ],
-    weather: {
+        {
+            id: "finance", title: "财经焦点", icon: "💰", tags: ["美股","A股","黄金","原油"],
+            items: [
+                { t: "伯克希尔哈撒韦2026年股东大会今日召开", s: "预计超5万人参加，市场关注巴菲特接班人投资策略及大规模现金储备动向。", src: "华尔街见闻", url: "https://www.baidu.com/s?wd=伯克希尔+2026+股东大会+巴菲特" },
+                { t: "国际金价从历史高点回落，报$2,345/盎司", s: "受美元走强及风险偏好回升影响，黄金较上周高点回落约3%。", src: "路透社", url: "https://www.baidu.com/s?wd=国际金价+回落+黄金+2026+5月" },
+                { t: "WTI原油连续第三周下跌，市场关注OPEC+产量", s: "受全球需求担忧及美国库存增加影响，原油价格承压。", src: "新浪财经", url: "https://www.baidu.com/s?wd=WTI+原油+下跌+OPEC+2026+5月" },
+                { t: "全球加密货币总市值突破3万亿美元", s: "比特币主导率降至42%，以太坊、Solana等竞争链表现强劲。", src: "CoinDesk", url: "https://www.baidu.com/s?wd=加密货币+总市值+3万亿+2026" },
+                { t: "离岸人民币兑美元连续两日回升", s: "中间价报7.24，中国央行释放稳汇率信号。", src: "财联社", url: "https://www.baidu.com/s?wd=人民币+汇率+回升+央行+2026+5月" }
+            ]
+        },
+        {
+            id: "sports", title: "体育赛事", icon: "⚽", tags: ["NBA","英超","欧冠","F1"],
+            items: [
+                { t: "NBA季后赛：湖人4-2淘汰勇士晋级西决", s: "詹姆斯砍下32+12+10三双，湖人将与掘金争夺总决赛席位。", src: "腾讯体育", url: "https://www.baidu.com/s?wd=NBA+湖人+勇士+季后赛+2026" },
+                { t: "英超：曼城提前两轮夺冠，达成英超四连冠", s: "瓜迪奥拉率队创下英格兰顶级联赛史无前例的四连冠纪录。", src: "直播吧", url: "https://www.baidu.com/s?wd=英超+曼城+四连冠+2026" },
+                { t: "F1迈阿密大奖赛：维斯塔潘夺冠，周冠宇第10", s: "红牛车队包揽前二，中国车手周冠宇以第10完赛拿到1个积分。", src: "腾讯体育", url: "https://www.baidu.com/s?wd=F1+迈阿密+维斯塔潘+周冠宇+2026" },
+                { t: "中国女排世界联赛取得三连胜", s: "以3-0横扫韩国队，目前3胜0负暂列积分榜首位。", src: "央视体育", url: "https://www.baidu.com/s?wd=中国女排+世界联赛+三连胜+2026" }
+            ]
+        },
+        {
+            id: "entertain", title: "文娱热点", icon: "🎬", tags: ["电影","音乐","综艺","游戏"],
+            items: [
+                { t: "五一档票房突破15亿元，《惊天救援》领跑", s: "五一档期总票房同比下滑约12%，《惊天救援》以5.2亿暂居榜首。", src: "猫眼电影", url: "https://www.baidu.com/s?wd=五一档+票房+突破+15亿+惊天救援+2026" },
+                { t: "周杰伦2026全球巡演北京站加开场次", s: "原定三场秒售罄后宣布加开两场，合计超15万张门票。", src: "大麦网", url: "https://www.baidu.com/s?wd=周杰伦+2026+巡演+北京+加场" },
+                { t: "《黑神话：悟空》DLC公布发售日期", s: "游戏科学宣布DLC"天命人"将于8月20日上线，包含新地图"火焰山"及新BOSS战。", src: "游民星空", url: "https://www.baidu.com/s?wd=黑神话悟空+DLC+发售+2026" },
+                { t: "2026上海迪士尼疯狂动物城园区日均接待超2万人", s: "作为全球首个疯狂动物城主题园区，开业半年已成为全园最热门项目。", src: "上观新闻", url: "https://www.baidu.com/s?wd=上海迪士尼+疯狂动物城+2026" }
+            ]
+        },
+        {
+            id: "health", title: "健康生活", icon: "💪", tags: ["养生","运动","饮食","睡眠"],
+            items: [
+                { t: "立夏将至：养生重在养心，注意午休", s: "5月5日立夏，中医建议此时注重心脏保养，适当午休，饮食清淡。", src: "健康时报", url: "https://www.baidu.com/s?wd=立夏+养生+养心+午休+2026" },
+                { t: "世卫组织：全球肥胖人口突破10亿", s: "中国成人超重及肥胖率已超50%，专家建议增加运动、减少精加工食品。", src: "丁香医生", url: "https://www.baidu.com/s?wd=世卫+全球+肥胖+10亿+中国+超重+2026" },
+                { t: "2026年最新膳食指南发布：每日蔬果应达5份", s: "新版指南强调全谷物摄入，建议每日至少摄入400克蔬菜水果。", src: "中国营养学会", url: "https://www.baidu.com/s?wd=2026+膳食指南+蔬果+全谷物" },
+                { t: "每天运动11分钟即可降低早逝风险23%", s: "剑桥大学研究：即使无法达到推荐运动量，少量运动也能显著改善健康。", src: "柳叶刀", url: "https://www.baidu.com/s?wd=每天+运动+11分钟+降低+早逝+风险+2026" }
+            ]
+        },
+        {
+            id: "today", title: "历史上的今天", icon: "📅", tags: [],
+            items: [
+                { t: "1519年 — 达·芬奇逝世", s: "意大利文艺复兴巨匠列奥纳多·达·芬奇去世，享年67岁。代表作《蒙娜丽莎》《最后的晚餐》。", src: "历史百科" },
+                { t: "1957年 — 麦卡锡逝世", s: "美国参议员约瑟夫·麦卡锡去世，其主导的"麦卡锡主义"反共运动影响深远。", src: "历史百科" },
+                { t: "2003年 — 中国海军首次环球航行", s: "由"青岛"号驱逐舰和"太仓"号综合补给舰组成的舰艇编队启航，历时4个月。", src: "人民海军" }
+            ]
+        }
+    ],
+    weather:
         city: "泗阳", current: { temp: "15°C", icon: "🌧️", desc: "小雨" },
         forecast: [
             { day: "今天 5/2", icon: "🌧️", temp: "14~17°C", desc: "小雨转阴" },
@@ -237,7 +283,7 @@ const data = {
             { day: "后天 5/4", icon: "☀️", temp: "10~25°C", desc: "晴" }
         ]
     },
-    quote: { text: "预测未来最好的方式就是创造它。", author: "—— 彼得·德鲁克" }
+    quote: { text: "唯一真正聪明的人是那些知道自己一无所知的人。", author: "—— 苏格拉底" }
 };
 
 // ====== Crypto IDs for CoinGecko ======
