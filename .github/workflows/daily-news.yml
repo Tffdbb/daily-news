@@ -48,8 +48,14 @@ jobs:
       - name: Trending + Zhihu
         run: python3 .github/scripts/fetch_trending.py || echo 'TRENDING_FAILED'
 
+      - name: Quant track
+        run: timeout 10 python3 .github/scripts/track_quant.py || echo 'TRACK_FAILED'
+
       - name: Merge
         run: python3 .github/scripts/merge_news.py
+
+      - name: Content enhance
+        run: timeout 30 python3 .github/scripts/enhance_news.py 2>&1 || echo 'ENHANCE_FAILED'
 
       - name: Build page
         shell: bash
