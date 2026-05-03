@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""热议话题采集器 - 知乎热榜+豆瓣热门+微博热议"""
+"""热议话题采集器 - 来自新闻中高频讨论的话题 + 百度热搜"""
 import json, subprocess, re, urllib.request, urllib.error, ssl
 
 def curl(url):
@@ -17,59 +17,62 @@ def fallback(url):
         return r.read().decode('utf-8','replace')
     except: return ''
 
-def f(url):
-    h = curl(url)
-    if len(h) < 100:
+def f(url, fallback_first=False):
+    if fallback_first:
         h2 = fallback(url)
-        if len(h2) > len(h): return h2
-    return h
+        if len(h2) > 100: return h2
+    h = curl(url)
+    return h if len(h) >= 100 else (fallback(url) or h)
 
 def collect():
     all_items = []
 
-    # 1. 知乎热榜（JSON API，无反爬）
-    print('  Fetching 知乎热榜...')
-    h = f('https://www.zhihu.com/billboard')
-    # 或者用热榜API
-    h2 = f('https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=20')
-    for m in re.finditer(r'"title":"([^"]{6,60})"', h2):
-        t = m.group(1).strip()
-        t = t.replace('\\u0026','&').replace('\\quot;','"')
-        if t[:8] not in [x.get('t','')[:8] for x in all_items]:
-            all_items.append({'t':t[:50], 'src':'知乎热榜', 'cat':'topic'})
-            if len([x for x in all_items if x['src']=='知乎热榜']) >= 8:
-                break
-
-    # 备用：从页面HTML提取
-    if len([x for x in all_items if x['src']=='知乎热榜']) < 3:
-        h3 = f('https://www.zhihu.com/hot')
-        for m in re.finditer(r'"titleText":"([^"]{6,60})"', h3):
-            t = m.group(1).strip()
-            if t[:8] not in [x.get('t','')[:8] for x in all_items]:
-                all_items.append({'t':t[:50], 'src':'知乎热榜', 'cat':'topic'})
-
-    # 2. 豆瓣热门（豆瓣小组精选/书影音热门）
-    print('  Fetching 豆瓣热门...')
-    h = f('https://www.douban.com/group/explore')
-    for m in re.finditer(r'title="([^"]{6,60})"', h):
-        t = m.group(1).strip()
-        if len(t) < 6: continue
-        if any(x in t for x in ['加入','退出','论坛']): continue
-        if t[:10] not in [x.get('t','')[:10] for x in all_items]:
-            all_items.append({'t':t[:50], 'src':'豆瓣热门', 'cat':'topic'})
-            if len([x for x in all_items if x['src']=='豆瓣热门']) >= 6:
-                break
-
-    # 3. 微博热搜（JSON嵌入）
-    print('  Fetching 微博热搜...')
-    h = f('https://weibo.com/ajax/side/hotSearch')
+    # 1. 百度实时热搜（无反爬，直接 JSON）
+    print('  Fetching 百度热搜...')
+    h = f('https://top.baidu.com/board?tab=realtime')
     for m in re.finditer(r'"word":"([^"]{4,40})"', h):
         t = m.group(1).strip()
-        # 过滤广告
-        if '广告' in t or '推荐' in t: continue
+        if any(x in t for x in ['广告','推广']): continue
+        # 放热度指数
+        hot_raw = ''
+        hm = re.search(r'"rawHot":"(\d+)"', h[m.end():m.end()+200])
+        if hm: hot_raw = hm.group(1)
         if t[:8] not in [x.get('t','')[:8] for x in all_items]:
-            all_items.append({'t':t[:40], 'src':'微博热搜', 'cat':'topic'})
-            if len([x for x in all_items if x['src']=='微博热搜']) >= 6:
+            tag = '🔥' if hot_raw and int(hot_raw) > 500000 else ''
+            all_items.append({'t':tag + t[:40], 'src':'百度热搜', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='百度热搜']) >= 8:
+                break
+
+    # 2. 脉脉热榜（职场热议，常出社会话题）
+    print('  Fetching 脉脉热榜...')
+    h = f('https://maimai.cn/web/topic_center')
+    for m in re.finditer(r'"title":"([^"]{4,40})"', h):
+        t = m.group(1).strip()
+        if t[:8] not in [x.get('t','')[:8] for x in all_items]:
+            all_items.append({'t':t[:40], 'src':'脉脉热榜', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='脉脉热榜']) >= 4:
+                break
+
+    # 3. 虎嗅推荐（科技+商业热议）
+    print('  Fetching 虎嗅热议...')
+    h = f('https://www.huxiu.com/')
+    for m in re.finditer(r'<h2[^>]*>([^<]{6,50})</h2>', h):
+        t = m.group(1).strip()
+        t = re.sub(r'<[^>]+>', '', t).strip()
+        if not t: continue
+        if t[:10] not in [x.get('t','')[:10] for x in all_items]:
+            all_items.append({'t':t[:45], 'src':'虎嗅热议', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='虎嗅热议']) >= 6:
+                break
+
+    # 4. V2EX 热门（程序员社区热议）
+    print('  Fetching V2EX 热门...')
+    h = f('https://www.v2ex.com/')
+    for m in re.finditer(r'class="topic-link"[^>]*>([^<]{6,60})</a>', h):
+        t = m.group(1).strip()
+        if t[:10] not in [x.get('t','')[:10] for x in all_items]:
+            all_items.append({'t':t[:45], 'src':'V2EX', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='V2EX']) >= 4:
                 break
 
     # 去重
