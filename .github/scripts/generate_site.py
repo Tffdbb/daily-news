@@ -243,11 +243,11 @@ if quants:
     for i, q in enumerate(quants):
         n = escape(q.get('name',''))
         cd = escape(q.get('code',''))
-        ch = escape(q.get('chg',''))
-        vl = escape(q.get('volRatio',''))
+        ch = escape(str(q.get('chg','')))
+        vl = escape(str(q.get('volRatio','')))
         sc = escape(str(q.get('score','')))
         pe = escape(str(q.get('pe','')))
-        tb = escape(q.get('turnover',''))
+        tb = escape(str(q.get('turnover','')))
         cls = 'up' if ch and float(ch) >= 0 else 'down'
         ch_s = ('+'+ch+'%') if ch and float(ch) >= 0 else (ch+'%' if ch else '')
         ci = cd[-4:] if len(cd) >= 4 else cd
