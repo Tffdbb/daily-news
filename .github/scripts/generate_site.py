@@ -222,7 +222,7 @@ if volumes:
         n = escape(v.get('name',''))
         cd = escape(v.get('code',''))
         pr = escape(v.get('price',''))
-        ch = escape(v.get('change',''))
+        ch = escape(str(v.get('change','')))
         vl = escape(v.get('vol',''))
         cls = 'up' if ch.startswith('+') else 'down' if ch.startswith('-') else ''
         ci = cd[-4:] if len(cd) >= 4 else cd
@@ -235,10 +235,10 @@ q_html = ''
 if quants:
     qi = ''
     for i, q in enumerate(quants):
-        n = escape(q.get('name',''))
-        cd = escape(q.get('code',''))
-        ch = escape(q.get('chg',''))
-        vl = escape(q.get('volRatio',''))
+        n = escape(str(q.get('name','')))
+        cd = escape(str(q.get('code','')))
+        ch = escape(str(q.get('chg','')))
+        vl = escape(str(q.get('volRatio','')))
         sc = escape(str(q.get('score','')))
         pe = escape(str(q.get('pe','')))
         tb = escape(q.get('turnover',''))
