@@ -61,10 +61,9 @@ def collect():
     # 1. 网站流量排名（热议的基础背景）
     print('  Fetching Tranco ranks...')
     ranks = fetch_ranks()
+    # 排名数据只返回，不加入话题列表（在generate_site里单独渲染）
     for r in ranks:
-        if r['rank'] and r['rank'] > 0:
-            n = f"🌐 {r['name']} 全球网站排名第{r['rank']:,}"
-            all_items.append({'t': n, 'src': 'Tranco排名', 'cat': 'topic'})
+        pass  # ranks will be rendered as a separate section
 
     # 2. 百度实时热搜
     print('  Fetching 百度热搜...')
