@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""热卖榜采集器 - 什么值得买好价/热门"""
+"""热卖榜采集器 - 购物热搜/好价"""
 import json, subprocess, re
 
 def curl(url):
@@ -12,45 +12,54 @@ def curl(url):
 def collect():
     all_items = []
 
-    # 1. 什么值得买 - 好价
-    print('  Fetching 什么值得买好价...')
-    h = curl('https://www.smzdm.com/')
-    # JSON 嵌入的数据
-    for m in re.finditer(r'"title":"([^"]{4,60})"', h):
-        t = m.group(1).strip()
-        if not t or len(t) < 6: continue
-        if any(x in t for x in ['优惠券','促销','满减','签到','抽奖']): continue
-        if t[:8] in [x.get('t','')[:8] for x in all_items]: continue
-        all_items.append({'t':t[:50], 'src':'什么值得买', 'cat':'shop'})
-
-    # 2. 什么值得买 - 排行榜
-    print('  Fetching 值得买排行榜...')
-    h = curl('https://www.smzdm.com/top/')
-    for m in re.finditer(r'"title":"([^"]{6,60})"', h):
-        t = m.group(1).strip()
-        if not t or len(t) < 6: continue
-        if t[:8] in [x.get('t','')[:8] for x in all_items]: continue
-        all_items.append({'t':t[:50], 'src':'值得买热榜', 'cat':'shop'})
-
-    # 3. 淘宝/天猫热销API
-    print('  Fetching 淘宝热销...')
-    h = curl('https://www.taobao.com/')
-    # 淘宝首页搜索框的热搜词
-    for m in re.finditer(r'"text":"([^"]{4,30})"', h):
-        t = m.group(1).strip()
-        if '广告' in t or '推广' in t: continue
-        if t[:6] in [x.get('t','')[:6] for x in all_items]: continue
-        if len(t) >= 4:
-            all_items.append({'t':'🔥 ' + t, 'src':'淘宝热搜', 'cat':'shop'})
-
-    # 4. 抖音热卖（通过抖音开放数据）
-    print('  Fetching 抖音热卖...')
-    h = curl('https://www.douyin.com/')
+    # 1. 百度热搜 - 看有没有购物相关的热搜词
+    print('  Fetching 百度热搜...')
+    h = curl('https://top.baidu.com/board?tab=realtime')
     for m in re.finditer(r'"word":"([^"]{4,30})"', h):
         t = m.group(1).strip()
-        if t[:6] in [x.get('t','')[:6] for x in all_items]: continue
+        # 只取看起来像购物的热搜
+        shop_keywords = ['手机','电脑','耳机','显卡','降价','新品','发布','上市','开售','抢购','限量','秒杀','补贴','降价','618','双11','特价','打折','优惠']
+        if any(k in t for k in shop_keywords):
+            if t[:8] not in [x.get('t','')[:8] for x in all_items]:
+                all_items.append({'t':t[:40], 'src':'百度热搜', 'cat':'shop'})
+
+    # 2. 京东热词 - 通过搜索建议
+    print('  Fetching 京东热词...')
+    h = curl('https://www.jd.com/')
+    # 京东热词（在页面里的hotwords）
+    for m in re.finditer(r'<a[^>]*class="[^"]*hotwords[^"]*"[^>]*>([^<]{4,30})</a>', h, re.DOTALL):
+        t = m.group(1).strip()
+        t = re.sub(r'<[^>]+>', '', t)
         if len(t) >= 4:
-            all_items.append({'t':'🎬 ' + t, 'src':'抖音热榜', 'cat':'shop'})
+            if t[:8] not in [x.get('t','')[:8] for x in all_items]:
+                all_items.append({'t':'🛒 ' + t, 'src':'京东热词', 'cat':'shop'})
+    
+    # 3. 什么值得买 - 好价头条
+    print('  Fetching 什么值得买...')
+    h = curl('https://www.smzdm.com/')
+    # 用正则找好价标题
+    for m in re.finditer(r'"title":"([^"]{6,60})"', h):
+        t = m.group(1).strip()
+        t = re.sub(r'\\u[0-9a-fA-F]{4}', '', t)  # 清理 unicode 转义
+        if not t or len(t) < 6: continue
+        if any(x in t for x in ['会员','广告','优惠券','签到','抽奖']): continue
+        if '价格' in t or '元' in t or '券' in t or '降价' in t or '好价' in t:
+            k = t[:10]
+            if k not in [x.get('t','')[:10] for x in all_items]:
+                all_items.append({'t':t[:50], 'src':'值得买好价', 'cat':'shop'})
+
+    # 4. 小红书热词 - 通过搜索
+    print('  Fetching 小红书热词...')
+    h = curl('https://www.xiaohongshu.com/')
+    for m in re.finditer(r'"title":"([^"]{4,40})"', h):
+        t = m.group(1).strip()
+        shop_words = ['测评','好物','推荐','开箱','必买','种草','穿搭','护肤','美妆']
+        if any(k in t for k in shop_words):
+            k = t[:10]
+            if k not in [x.get('t','')[:10] for x in all_items]:
+                all_items.append({'t':t[:40], 'src':'小红书好物', 'cat':'shop'})
+                if len([x for x in all_items if x.get('src')=='小红书好物']) >= 4:
+                    break
 
     # 去重
     seen=set();deduped=[]
@@ -59,7 +68,7 @@ def collect():
         if k not in seen:
             seen.add(k)
             deduped.append(item)
-    return deduped[:20]
+    return deduped[:15]
 
 if __name__ == '__main__':
     items = collect()
