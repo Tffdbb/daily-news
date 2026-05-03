@@ -383,7 +383,7 @@ footer{padding:8px 0;text-align:center;font-size:8px;color:#2a3045}
 @media(max-width:480px){.sg,.fg{grid-template-columns:1fr}.tl{font-size:16px}}
 '''
 
-html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'; img-src 'self' data: https:; connect-src 'self'; frame-src 'none'; object-src 'none'">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
+html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<meta http-equiv=Content-Security-Policy content=\"default-src &#39;self&#39;; style-src &#39;unsafe-inline&#39; &#39;self&#39;; script-src &#39;unsafe-inline&#39; &#39;self&#39;; img-src &#39;self&#39; data: https:; connect-src &#39;self&#39;; frame-src &#39;none&#39;; object-src &#39;none&#39;\">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
 
 os.makedirs('_site', exist_ok=True)
 with open('_site/index.html', 'w', encoding='utf-8') as f:
