@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""热议话题采集器 - 百度热搜+社区热议+网站流量排名"""
+"""热议话题采集器 - 百度热搜+V2EX+网站排名"""
 import json, subprocess, re, urllib.request, urllib.error, ssl
 
 def curl(url):
@@ -21,7 +21,6 @@ def f(url):
     h = curl(url)
     return h if len(h) >= 100 else (fallback(url) or h)
 
-# 主要平台流量排名
 PLATFORMS = [
     ('淘宝', 'taobao.com'),
     ('京东', 'jd.com'),
@@ -34,60 +33,71 @@ PLATFORMS = [
     ('百度', 'baidu.com'),
     ('快手', 'kuaishou.com'),
     ('美团', 'meituan.com'),
-    ('闲鱼', '2.taobao.com'),
+    ('阿里', '2.taobao.com'),
     ('得物', 'dewu.com'),
 ]
 
 def fetch_ranks():
-    """从Tranco获取全球网站排名"""
     results = []
     for name, domain in PLATFORMS:
         url = f'https://tranco-list.eu/api/ranks/domain/{domain}'
         try:
             h = fallback(url) if url.startswith('https') else curl(url)
             j = json.loads(h)
-            rank = j.get('ranks', [{}])[0].get('rank', 0)
-            results.append({'name': name, 'domain': domain, 'rank': rank})
+            rank = j.get('ranks',[{}])[0].get('rank',0)
+            results.append({'name':name,'domain':domain,'rank':rank})
             print(f'  {name}: #{rank}')
         except:
-            results.append({'name': name, 'domain': domain, 'rank': 0})
-            print(f'  {name}: error')
+            results.append({'name':name,'domain':domain,'rank':0})
     results.sort(key=lambda x: (x['rank'] or 99999))
     return results
 
 def collect():
     all_items = []
-
-    # 1. 网站流量排名（热议的基础背景）
     print('  Fetching Tranco ranks...')
     ranks = fetch_ranks()
-    # 排名数据只返回，不加入话题列表（在generate_site里单独渲染）
-    for r in ranks:
-        pass  # ranks will be rendered as a separate section
 
-    # 2. 百度实时热搜
+    # 百度实时热搜（带链接）
     print('  Fetching 百度热搜...')
     h = f('https://top.baidu.com/board?tab=realtime')
+    # 尝试提取链接
     for m in re.finditer(r'"word":"([^"]{4,40})"', h):
         t = m.group(1).strip()
-        if any(x in t for x in ['广告','推广']): continue
+        if any(x in t for x in ['推广','广告']): continue
         hot_raw = ''
         hm = re.search(r'"rawHot":"(\d+)"', h[m.end():m.end()+200])
         if hm: hot_raw = hm.group(1)
+        # 提取链接：百度搜索跳转
+        u = 'https://www.baidu.com/s?wd=' + urllib.request.quote(t)
         if t[:8] not in [x.get('t','')[:8] for x in all_items]:
             tag = '🔥' if hot_raw and int(hot_raw) > 500000 else ''
-            all_items.append({'t':tag + t[:40], 'src':'百度热搜', 'cat':'topic'})
+            all_items.append({'t':tag + t[:40], 'src':'百度热搜', 'cat':'topic', 'u':u})
             if len([x for x in all_items if x['src']=='百度热搜']) >= 6:
                 break
 
-    # 3. V2EX 热门
+    # V2EX 热门话题（带链接）
     print('  Fetching V2EX...')
     h = f('https://www.v2ex.com/')
-    for m in re.finditer(r'class="topic-link"[^>]*>([^<]{6,60})</a>', h):
-        t = m.group(1).strip()
+    for m in re.finditer(r'<a\s+href="(/t/[^"]+)"[^>]*class="topic-link"[^>]*>([^<]{6,60})</a>', h):
+        href = m.group(1).strip()
+        t = m.group(2).strip()
+        u = 'https://www.v2ex.com' + href
         if t[:10] not in [x.get('t','')[:10] for x in all_items]:
-            all_items.append({'t':t[:45], 'src':'V2EX', 'cat':'topic'})
+            all_items.append({'t':t[:45], 'src':'V2EX', 'cat':'topic', 'u':u})
             if len([x for x in all_items if x['src']=='V2EX']) >= 4:
+                break
+
+    # 虎嗅（带链接）
+    print('  Fetching 虎嗅...')
+    h = f('https://m.huxiu.com/')
+    for m in re.finditer(r'<a[^>]*href="(/(article|moment)/[^"]+)"[^>]*>([^<]{8,60})</a>', h):
+        href = m.group(1).strip()
+        t = m.group(3).strip()
+        if len(t) < 6: continue
+        u = 'https://m.huxiu.com' + href
+        if t[:10] not in [x.get('t','')[:10] for x in all_items]:
+            all_items.append({'t':t[:45], 'src':'虎嗅', 'cat':'topic', 'u':u})
+            if len([x for x in all_items if x['src']=='虎嗅']) >= 3:
                 break
 
     # 去重
