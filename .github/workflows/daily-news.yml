@@ -43,7 +43,7 @@ jobs:
         run: timeout 30 python3 .github/scripts/fetch_metal_vol.py || echo 'MV_FAILED'
 
       - name: Quant picker
-        run: timeout 30 node .github/scripts/fetch_quant.js || echo 'QUANT_FAILED'
+        run: node .github/scripts/fetch_quant.js || echo 'QUANT_FAILED'
 
       - name: Merge
         run: python3 .github/scripts/merge_news.py
