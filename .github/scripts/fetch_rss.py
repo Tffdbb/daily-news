@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""RSS采集器 - 纯中文源（替换英文RSS）"""
+"""RSS采集器 - 纯中文源"""
 import json, subprocess, urllib.request, urllib.error, ssl, xml.etree.ElementTree as ET, re
 
 def curl(url):
     try:
-        r = subprocess.run(['timeout','10','curl','-sL',url,'-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','--connect-timeout','8','--max-time','9','-o','-','-w',''], capture_output=True, timeout=12, text=True)
+        r = subprocess.run(['timeout','10','curl','-sL',url,'-A','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','--connect-timeout','8','--max-time','10','-o','-','-w',''], capture_output=True, timeout=12, text=True)
         return r.stdout
     except: return ''
 
@@ -27,35 +27,48 @@ def f(url):
 def parse_rss(xml_text, src, max_items=8):
     items = []
     if not xml_text.strip(): return items
+    # 有时返回 HTML 而不是 RSS
+    if '<html' in xml_text[:200].lower():
+        return items
     try:
         root = ET.fromstring(xml_text)
-        for entry in root.iter('item'):
+        # 兼容 RSS 2.0 (item) 和 Atom (entry)
+        entries = root.iter('item')
+        entries_list = list(entries)
+        if not entries_list:
+            entries_list = list(root.iter('entry'))
+        for entry in entries_list:
             titles = entry.find('title')
             links = entry.find('link')
-            desc = entry.find('description')
             t = (titles.text or '').strip() if titles is not None else ''
-            u = (links.text or '').strip() if links is not None else ''
-            if not links.text:
-                u = links.get('href','') if links is not None else ''
+            u = ''
+            if links is not None:
+                u = (links.text or links.get('href','') or '').strip()
             # 清理 HTML 标签
             t = re.sub(r'<[^>]+>', '', t)
             if not t or len(t) < 6: continue
-            # 过滤英文（英文标题不要）
+            # 过滤英文
             eng_ratio = sum(1 for c in t if c.isascii() and c.isalpha()) / max(len(t), 1)
             if eng_ratio > 0.4: continue
             items.append({'t':t[:50], 'u':u, 'src':src})
-        if not items:
-            for entry in root.iter('entry'):
+    except ET.ParseError as e:
+        # 尝试修复常见编码问题
+        try:
+            xml_text = xml_text.encode('utf-8','ignore').decode('utf-8')
+            root = ET.fromstring(xml_text)
+            entries = root.iter('item')
+            for entry in entries:
                 titles = entry.find('title')
                 links = entry.find('link')
                 t = (titles.text or '').strip() if titles is not None else ''
-                u = (links.get('href') or '') if links is not None else ''
+                u = (links.text or links.get('href','') or '').strip() if links is not None else ''
                 t = re.sub(r'<[^>]+>', '', t)
                 if not t or len(t) < 6: continue
                 eng_ratio = sum(1 for c in t if c.isascii() and c.isalpha()) / max(len(t), 1)
                 if eng_ratio > 0.4: continue
                 items.append({'t':t[:50], 'u':u, 'src':src})
-    except: pass
+        except:
+            pass
     # 去重
     seen=set();deduped=[]
     for item in items:
@@ -67,14 +80,14 @@ def collect():
     all_news = []
     # 纯中文RSS源
     sources = {
-        '澎湃新闻': 'https://www.thepaper.cn/rss/newspaper.xml',
+        '央视新闻': 'https://news.cctv.com/rss/1.xml',
+        '参考消息': 'https://www.cankaoxiaoxi.com/rss.xml',
+        '中国经济网': 'https://www.ce.cn/rss/main.xml',
         '观察者网': 'https://www.guancha.cn/rss.xml',
         '环球网': 'https://www.huanqiu.com/rss.xml',
-        '央视新闻': 'https://news.cctv.com/rss/1.xml',
         '新华网': 'https://www.xinhuanet.com/rss/news.xml',
+        '澎湃新闻': 'https://www.thepaper.cn/rss/newspaper.xml',
         '人民网': 'https://www.people.com.cn/rss/important.xml',
-        '中国经济网': 'https://www.ce.cn/rss/main.xml',
-        '参考消息': 'https://www.cankaoxiaoxi.com/rss.xml',
     }
     for name, url in sources.items():
         html = f(url)
