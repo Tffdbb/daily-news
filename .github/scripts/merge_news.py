@@ -19,6 +19,8 @@ def main():
     quant_holder = []
     stocks_holder = []
     forex_holder = {}
+    trending_holder = []
+    zhihu_holder = []
     
     # 1. 主采集器 (国内新闻带分组)
     data = load('news_data.json')
@@ -67,6 +69,15 @@ def main():
     if 'picks' in data6:
         quant_holder = data6['picks']
         print(f'量化选股: {len(quant_holder)}')
+    
+    # 7. GitHub Trending + 知乎热榜
+    data7 = load('trending.json')
+    if 'trending' in data7:
+        trending_holder = data7['trending']
+        print(f'GitHub Trending: {len(trending_holder)}')
+    if 'zhihu' in data7:
+        zhihu_holder = data7['zhihu']
+        print(f'知乎热榜: {len(zhihu_holder)}')
     
     # 去重
     seen = set()
