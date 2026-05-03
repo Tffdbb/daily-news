@@ -22,7 +22,7 @@ def urlopen(url, timeout=7):
         return r.read().decode('utf-8','replace')
     except: return ''
 
-def f_either(url, timeout=6):
+def f_either(url, timeout=10):
     h = curl_fetch(url, timeout)
     if len(h) < 100:
         h2 = urlopen(url, timeout+1)
@@ -248,14 +248,11 @@ def main():
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as ex:
         futs = {ex.submit(_run_src, fn): i for i, fn in enumerate(sources)}
-        try:
-            for f in concurrent.futures.as_completed(futs, timeout=60):
-                try:
-                    items = f.result(timeout=3)
-                    if items: all_items.extend(items)
-                except: pass
-        except concurrent.futures.TimeoutError:
-            for f in futs: f.cancel()
+        for f in concurrent.futures.as_completed(futs):
+            try:
+                items = f.result(timeout=15)
+                if items: all_items.extend(items)
+            except: pass
     
     # 事件共振：每个源对同一关键词只计1次
     from collections import defaultdict
