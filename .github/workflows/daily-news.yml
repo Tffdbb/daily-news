@@ -36,6 +36,9 @@ jobs:
       - name: Vertical collector
         run: timeout 90 python3 .github/scripts/fetch_more.py || echo 'MORE_FAILED'
 
+      - name: Shop collector
+        run: timeout 60 python3 .github/scripts/fetch_shop.py || echo 'SHOP_FAILED'
+
       - name: Merge
         run: python3 .github/scripts/merge_news.py
 
