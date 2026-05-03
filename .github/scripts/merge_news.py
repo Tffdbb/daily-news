@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""合并采集器 - 合并所有并行采集器的JSON输出，保留分组"""
+"""合并采集器 - 合并所有并行采集器的JSON输出，保留分组，新增热卖榜"""
 import json, os
 
 def load(path):
@@ -12,6 +12,7 @@ def load(path):
 def main():
     news = []
     groups_holder = {}
+    shop_items = []
     stocks_holder = []
     forex_holder = {}
     
@@ -27,7 +28,7 @@ def main():
     if 'forex' in data:
         forex_holder = data.get('forex', {})
     
-    # 2. RSS采集器 (国际新闻)
+    # 2. RSS采集器
     data = load('rss_news.json')
     if 'rss' in data:
         news.extend(data['rss'])
@@ -38,6 +39,12 @@ def main():
     if 'more' in data:
         news.extend(data['more'])
         print(f'垂直: {len(data["more"])}')
+    
+    # 4. 热卖榜采集器（新）
+    data = load('shop_news.json')
+    if 'shop' in data:
+        shop_items = data['shop']
+        print(f'热卖榜: {len(shop_items)}')
     
     # 去重
     seen = set()
@@ -50,17 +57,15 @@ def main():
     
     print(f'→ {len(deduped)} 条')
     
-    # 重建分组（从主采集器继承）
+    # 重建分组
     groups = {'finance':[],'macro':[],'hot':[],'tech':[],'oppo':[]}
     for key in groups:
         if key in groups_holder:
             groups[key] = [x for x in groups_holder[key] if x.get('t','')[:10] in seen]
     
-    # 对没分组的新闻自动归类
     for n in deduped:
         cat = n.get('cat','hot')
         if cat not in groups: cat = 'hot'
-        # 检查是否已经在分组里
         already = False
         for g in groups.values():
             for x in g:
@@ -71,13 +76,23 @@ def main():
         if not already:
             groups[cat].append(n)
     
+    # 热卖榜去重
+    seen_shop = set()
+    deduped_shop = []
+    for n in shop_items:
+        k = n.get('t','')[:10]
+        if k and k not in seen_shop:
+            seen_shop.add(k)
+            deduped_shop.append(n)
+    
     output = {'news': deduped, 'groups': groups,
+              'shop': deduped_shop,
               'stocks': stocks_holder or [], 'forex': forex_holder or {},
               'labels': data.get('labels', []) if data else []}
     
     with open('news_data.json', 'w', encoding='utf-8') as f:
         json.dump(output, f, ensure_ascii=False)
-    print(f'写入 {len(deduped)} 条, {sum(len(v) for v in groups.values())} 已分组')
+    print(f'写入 {len(deduped)} 条, {sum(len(v) for v in groups.values())} 已分组, 热卖 {len(deduped_shop)} 条')
 
 if __name__ == '__main__':
     main()
