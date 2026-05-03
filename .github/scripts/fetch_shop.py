@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""热议话题采集器 - 来自新闻中高频讨论的话题 + 百度热搜"""
+"""热议话题采集器 - 百度热搜+社区热议+网站流量排名"""
 import json, subprocess, re, urllib.request, urllib.error, ssl
 
 def curl(url):
@@ -17,56 +17,72 @@ def fallback(url):
         return r.read().decode('utf-8','replace')
     except: return ''
 
-def f(url, fallback_first=False):
-    if fallback_first:
-        h2 = fallback(url)
-        if len(h2) > 100: return h2
+def f(url):
     h = curl(url)
     return h if len(h) >= 100 else (fallback(url) or h)
+
+# 主要平台流量排名
+PLATFORMS = [
+    ('淘宝', 'taobao.com'),
+    ('京东', 'jd.com'),
+    ('拼多多', 'pinduoduo.com'),
+    ('抖音', 'douyin.com'),
+    ('哔哩哔哩', 'bilibili.com'),
+    ('微博', 'weibo.com'),
+    ('知乎', 'zhihu.com'),
+    ('小红书', 'xiaohongshu.com'),
+    ('百度', 'baidu.com'),
+    ('快手', 'kuaishou.com'),
+    ('美团', 'meituan.com'),
+    ('闲鱼', '2.taobao.com'),
+    ('得物', 'dewu.com'),
+]
+
+def fetch_ranks():
+    """从Tranco获取全球网站排名"""
+    results = []
+    for name, domain in PLATFORMS:
+        url = f'https://tranco-list.eu/api/ranks/domain/{domain}'
+        try:
+            h = fallback(url) if url.startswith('https') else curl(url)
+            j = json.loads(h)
+            rank = j.get('ranks', [{}])[0].get('rank', 0)
+            results.append({'name': name, 'domain': domain, 'rank': rank})
+            print(f'  {name}: #{rank}')
+        except:
+            results.append({'name': name, 'domain': domain, 'rank': 0})
+            print(f'  {name}: error')
+    results.sort(key=lambda x: (x['rank'] or 99999))
+    return results
 
 def collect():
     all_items = []
 
-    # 1. 百度实时热搜（无反爬，直接 JSON）
+    # 1. 网站流量排名（热议的基础背景）
+    print('  Fetching Tranco ranks...')
+    ranks = fetch_ranks()
+    for r in ranks:
+        if r['rank'] and r['rank'] > 0:
+            n = f"🌐 {r['name']} 全球网站排名第{r['rank']:,}"
+            all_items.append({'t': n, 'src': 'Tranco排名', 'cat': 'topic'})
+
+    # 2. 百度实时热搜
     print('  Fetching 百度热搜...')
     h = f('https://top.baidu.com/board?tab=realtime')
     for m in re.finditer(r'"word":"([^"]{4,40})"', h):
         t = m.group(1).strip()
         if any(x in t for x in ['广告','推广']): continue
-        # 放热度指数
         hot_raw = ''
         hm = re.search(r'"rawHot":"(\d+)"', h[m.end():m.end()+200])
         if hm: hot_raw = hm.group(1)
         if t[:8] not in [x.get('t','')[:8] for x in all_items]:
             tag = '🔥' if hot_raw and int(hot_raw) > 500000 else ''
             all_items.append({'t':tag + t[:40], 'src':'百度热搜', 'cat':'topic'})
-            if len([x for x in all_items if x['src']=='百度热搜']) >= 8:
+            if len([x for x in all_items if x['src']=='百度热搜']) >= 6:
                 break
 
-    # 2. 脉脉热榜（职场热议，常出社会话题）
-    print('  Fetching 脉脉热榜...')
-    h = f('https://maimai.cn/web/topic_center')
-    for m in re.finditer(r'"title":"([^"]{4,40})"', h):
-        t = m.group(1).strip()
-        if t[:8] not in [x.get('t','')[:8] for x in all_items]:
-            all_items.append({'t':t[:40], 'src':'脉脉热榜', 'cat':'topic'})
-            if len([x for x in all_items if x['src']=='脉脉热榜']) >= 4:
-                break
-
-    # 3. 虎嗅推荐（科技+商业热议）
-    print('  Fetching 虎嗅热议...')
-    h = f('https://www.huxiu.com/')
-    for m in re.finditer(r'<h2[^>]*>([^<]{6,50})</h2>', h):
-        t = m.group(1).strip()
-        t = re.sub(r'<[^>]+>', '', t).strip()
-        if not t: continue
-        if t[:10] not in [x.get('t','')[:10] for x in all_items]:
-            all_items.append({'t':t[:45], 'src':'虎嗅热议', 'cat':'topic'})
-            if len([x for x in all_items if x['src']=='虎嗅热议']) >= 6:
-                break
-
-    # 4. V2EX 热门（程序员社区热议）
-    print('  Fetching V2EX 热门...')
+    # 3. V2EX 热门
+    print('  Fetching V2EX...')
     h = f('https://www.v2ex.com/')
     for m in re.finditer(r'class="topic-link"[^>]*>([^<]{6,60})</a>', h):
         t = m.group(1).strip()
@@ -82,10 +98,11 @@ def collect():
         if k not in seen:
             seen.add(k)
             deduped.append(item)
-    return deduped[:15]
+    return deduped[:20], ranks
 
 if __name__ == '__main__':
-    items = collect()
+    items, ranks = collect()
+    data = {'shop': items, 'ranks': ranks}
     with open('shop_news.json', 'w', encoding='utf-8') as f:
-        json.dump({'shop': items}, f, ensure_ascii=False)
-    print(f'Topic collector done: {len(items)} items')
+        json.dump(data, f, ensure_ascii=False)
+    print(f'Topic collector done: {len(items)} items + {len(ranks)} ranks')
