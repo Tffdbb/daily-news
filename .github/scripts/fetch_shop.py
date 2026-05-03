@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""热卖榜采集器 - 使用无反爬的购物推荐API"""
+"""热议话题采集器 - 知乎热榜+豆瓣热门+微博热议"""
 import json, subprocess, re, urllib.request, urllib.error, ssl
 
 def curl(url):
@@ -27,60 +27,55 @@ def f(url):
 def collect():
     all_items = []
 
-    # 1. 百度热搜的购物相关热搜词（百度top没有反爬）
-    print('  Fetching 百度热搜购物词...')
-    h = f('https://top.baidu.com/board?tab=realtime')
-    shop_keys = {'手机','电脑','耳机','显卡','降价','新品','发布','上市','抢购','限量','秒杀',
-                 '618','双11','特价','打折','补贴','电动车','汽车','空调','冰箱','洗衣机',
-                 'iPhone','华为','小米','OPPO','vivo','平板','手环','手表','无人机'}
-    for m in re.finditer(r'"word":"([^"]{2,30})"', h):
+    # 1. 知乎热榜（JSON API，无反爬）
+    print('  Fetching 知乎热榜...')
+    h = f('https://www.zhihu.com/billboard')
+    # 或者用热榜API
+    h2 = f('https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=20')
+    for m in re.finditer(r'"title":"([^"]{6,60})"', h2):
         t = m.group(1).strip()
-        if any(k in t for k in shop_keys):
+        t = t.replace('\\u0026','&').replace('\\quot;','"')
+        if t[:8] not in [x.get('t','')[:8] for x in all_items]:
+            all_items.append({'t':t[:50], 'src':'知乎热榜', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='知乎热榜']) >= 8:
+                break
+
+    # 备用：从页面HTML提取
+    if len([x for x in all_items if x['src']=='知乎热榜']) < 3:
+        h3 = f('https://www.zhihu.com/hot')
+        for m in re.finditer(r'"titleText":"([^"]{6,60})"', h3):
+            t = m.group(1).strip()
             if t[:8] not in [x.get('t','')[:8] for x in all_items]:
-                all_items.append({'t':'🔍 ' + t, 'src':'购物热搜', 'cat':'shop'})
+                all_items.append({'t':t[:50], 'src':'知乎热榜', 'cat':'topic'})
 
-    # 2. 什么值得买 - 直接抓原始HTML找好价（比JSON稳定）
-    print('  Fetching 什么值得买...')
-    h = f('https://www.smzdm.com/')
-    # 从JSON数据里抓价格/商品
-    for m in re.finditer(r'"price":"([^"]{1,10})"', h):
-        p = m.group(1)
-        if p.replace('.','').isdigit():
-            pass  # 记录价格，后面看有没有对应标题
-    for m in re.finditer(r'"title":"([^"]{8,60})"', h):
+    # 2. 豆瓣热门（豆瓣小组精选/书影音热门）
+    print('  Fetching 豆瓣热门...')
+    h = f('https://www.douban.com/group/explore')
+    for m in re.finditer(r'title="([^"]{6,60})"', h):
         t = m.group(1).strip()
-        # 只保留有 "元"、"价"、"好" 等购物特征的
-        t_clean = t.encode('utf-8').decode('unicode_escape') if '\\u' in t else t
-        if any(k in t_clean for k in ['元','价','好价']):
-            if t_clean[:10] not in [x.get('t','')[:10] for x in all_items]:
-                all_items.append({'t':t_clean[:50], 'src':'值得买', 'cat':'shop'})
-        if len([x for x in all_items if x['src']=='值得买']) >= 8:
-            break
+        if len(t) < 6: continue
+        if any(x in t for x in ['加入','退出','论坛']): continue
+        if t[:10] not in [x.get('t','')[:10] for x in all_items]:
+            all_items.append({'t':t[:50], 'src':'豆瓣热门', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='豆瓣热门']) >= 6:
+                break
 
-    # 3. 知乎好物推荐/购物话题
-    print('  Fetching 知乎购物话题...')
-    h = f('https://www.zhihu.com/topics')
-    for m in re.finditer(r'<a[^>]*>([^<]{4,20})</a>', h):
+    # 3. 微博热搜（JSON嵌入）
+    print('  Fetching 微博热搜...')
+    h = f('https://weibo.com/ajax/side/hotSearch')
+    for m in re.finditer(r'"word":"([^"]{4,40})"', h):
         t = m.group(1).strip()
-        shop_topic_keywords = ['购物','商品','好物','推荐','测评','穿搭','家居','数码','护肤']
-        if any(k in t for k in shop_topic_keywords):
-            if t[:8] not in [x.get('t','')[:8] for x in all_items]:
-                all_items.append({'t':'📋 ' + t, 'src':'知乎话题', 'cat':'shop'})
-
-    # 4. 新浪科技热词（常含新品发布）
-    print('  Fetching 新品发布热搜...')
-    h = f('https://news.sina.com.cn/')
-    for m in re.finditer(r'<a[^>]*href="[^"]*"[^>]*>([^<]{6,40})</a>', h):
-        t = m.group(1).strip()
-        shop_words = ['发布','上市','开售','首发','新品','亮相']
-        if any(k in t for k in shop_words):
-            if t[:10] not in [x.get('t','')[:10] for x in all_items]:
-                all_items.append({'t':'📱 ' + t, 'src':'新品', 'cat':'shop'})
+        # 过滤广告
+        if '广告' in t or '推荐' in t: continue
+        if t[:8] not in [x.get('t','')[:8] for x in all_items]:
+            all_items.append({'t':t[:40], 'src':'微博热搜', 'cat':'topic'})
+            if len([x for x in all_items if x['src']=='微博热搜']) >= 6:
+                break
 
     # 去重
     seen=set();deduped=[]
     for item in all_items:
-        k = item['t'][:12]
+        k = item['t'][:10]
         if k not in seen:
             seen.add(k)
             deduped.append(item)
@@ -90,4 +85,4 @@ if __name__ == '__main__':
     items = collect()
     with open('shop_news.json', 'w', encoding='utf-8') as f:
         json.dump({'shop': items}, f, ensure_ascii=False)
-    print(f'Shop collector done: {len(items)} items')
+    print(f'Topic collector done: {len(items)} items')
