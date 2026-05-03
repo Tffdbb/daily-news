@@ -179,7 +179,7 @@ if headlines:
         badge = '📌' if i < 2 else '▸'
         rs = hl.get('_rscore', 0)
         rs_tag = ' <span class="rbadge">'+str(rs)+'源</span>' if rs > 1 else ''
-        hls += '<div class="hl" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="hb" style="background:'+clr+'">'+badge+'</span><span class="ht">'+nn+'</span><span class="hs">'+src+rs_tag+'</span></div>'
+        hls += '<div class="hl" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="hb" style="background:'+clr+'">'+badge+'</span><span class="ht">'+nn+'</span><span class="hs">'+src+rs_tag+'</span></div>'
     hl_html = '<div class="se" id="top"><div class="sh"><span class="st">🔥 今日要闻</span><span class="sc">'+str(len(headlines))+'条</span></div>'+hls+'</div>'
 
 # 各板块
@@ -193,7 +193,7 @@ for c in order:
         nn = escape(item.get('t',''))[:40]
         s = escape(item.get('src',''))
         uu = item.get('u','#')
-        inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:'+bg+'">'+str(i+1)+'</span><span class="nn">'+nn+'</span><span class="ns">'+s+'</span></div>'
+        inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:'+bg+'">'+str(i+1)+'</span><span class="nn">'+nn+'</span><span class="ns">'+s+'</span></div>'
     news_html += '<div class="se" id="g'+c+'"><div class="sh"><span class="st">'+cat_names[c]+'</span><span class="sc">'+str(len(items))+'条</span></div>'+inner+'</div>'
 
 # 热词
@@ -267,7 +267,7 @@ if ghs:
         stars_tag = ''
         if st: stars_tag = ' <span style="color:#f59e0b">&#9733;'+str(st)+'</span>'
         lang_tag = (' <span style="color:#4a5a6d;font-size:7px">'+ln+'</span>') if ln else ''
-        gi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#24292e">'+str(i+1)+'</span><span class="nn">'+n[:40]+'</span><span class="ns">'+lang_tag+stars_tag+'</span></div>'
+        gi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:#24292e">'+str(i+1)+'</span><span class="nn">'+n[:40]+'</span><span class="ns">'+lang_tag+stars_tag+'</span></div>'
     gh_html = '<div class="se" id="gtrending"><div class="sh"><span class="st">&#127942; GitHub 今日热榜</span><span class="sc">'+str(len(ghs))+'个项目</span></div>'+gi+'</div>'
 
 # 知乎热榜
@@ -277,7 +277,7 @@ if zhs:
     for i, z in enumerate(zhs[:8]):
         t = escape(z.get('t',''))[:42]
         uu = z.get('u','#')
-        zi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#0066ff">'+str(i+1)+'</span><span class="nn">'+t+'</span><span class="ns">知乎</span></div>'
+        zi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:#0066ff">'+str(i+1)+'</span><span class="nn">'+t+'</span><span class="ns">知乎</span></div>'
     zh_html = '<div class="se" id="gzhihu"><div class="sh"><span class="st">&#128172; 知乎热榜</span><span class="sc">'+str(len(zhs))+'条</span></div>'+zi+'</div>'
 
 fx_html = ''  # 不再单独显示汇率
@@ -290,7 +290,7 @@ if shop_items:
         nn = escape(item.get('t',''))[:45]
         s = escape(item.get('src','热议'))
         uu = item.get('u','#')
-        shop_inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#f97316">'+str(i+1)+'</span><span class="nn">'+nn+'</span><span class="ns">'+s+'</span></div>'
+        shop_inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:#f97316">'+str(i+1)+'</span><span class="nn">'+nn+'</span><span class="ns">'+s+'</span></div>'
     shop_html = '<div class="se" id="gshop"><div class="sh"><span class="st">📋 热议话题</span><span class="sc">'+str(len(shop_items))+'条</span></div>'+shop_inner+'</div>'
 
 body = ''
@@ -383,7 +383,7 @@ footer{padding:8px 0;text-align:center;font-size:8px;color:#2a3045}
 @media(max-width:480px){.sg,.fg{grid-template-columns:1fr}.tl{font-size:16px}}
 '''
 
-html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
+html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'unsafe-inline' 'self'; img-src 'self' data: https:; connect-src 'self'; frame-src 'none'; object-src 'none'">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
 
 os.makedirs('_site', exist_ok=True)
 with open('_site/index.html', 'w', encoding='utf-8') as f:
