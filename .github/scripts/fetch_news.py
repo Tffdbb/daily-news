@@ -240,26 +240,21 @@ def main():
         except concurrent.futures.TimeoutError:
             for f in futs: f.cancel()
     
-    # 给每个新闻加上关键词
-    for n in all_items:
-        n['_key'] = extract_keys(n.get('t',''))
-    
     # 事件共振：每个源对同一关键词只计1次
     from collections import defaultdict
     key_srcs = defaultdict(set)
     for n in all_items:
-        keys = n.get('_key', set())
-        if keys and isinstance(keys, set):
-            for key in keys:
-                if len(key) > 2:
-                    key_srcs[key].add(n.get('src',''))
+        keys = extract_keys(n.get('t',''))
+        n['_keys'] = list(keys)
+        for key in keys:
+            if len(key) > 2:
+                key_srcs[key].add(n.get('src',''))
     
     for n in all_items:
-        keys = n.get('_key', set())
+        keys = n.get('_keys', [])
         max_res = 0
-        if keys and isinstance(keys, set):
-            for key in keys:
-                max_res = max(max_res, len(key_srcs.get(key, set())))
+        for key in keys:
+            max_res = max(max_res, len(key_srcs.get(key, set())))
         n['_resonance'] = max_res
     
     # 去重
