@@ -248,13 +248,19 @@ def main():
     from collections import defaultdict
     key_srcs = defaultdict(set)
     for n in all_items:
-        k = n['_key']
-        if k and len(k) > 2:
-            key_srcs[k].add(n.get('src',''))
+        keys = n.get('_key', set())
+        if keys and isinstance(keys, set):
+            for key in keys:
+                if len(key) > 2:
+                    key_srcs[key].add(n.get('src',''))
     
     for n in all_items:
-        k = n['_key']
-        n['_resonance'] = len(key_srcs.get(k, set()))
+        keys = n.get('_key', set())
+        max_res = 0
+        if keys and isinstance(keys, set):
+            for key in keys:
+                max_res = max(max_res, len(key_srcs.get(key, set())))
+        n['_resonance'] = max_res
     
     # 去重
     seen=set();news=[]
