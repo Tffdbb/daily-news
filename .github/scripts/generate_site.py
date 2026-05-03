@@ -191,7 +191,36 @@ if hw:
 
 src_html = ' · '.join(escape(s) for s in srcs)
 market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span><span class="sc">实时</span></div><div class="sg">'+sr+'</div></div>'
-fx_html = '<div class="se"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">'+fr+'</div></div>'
+# 贵金属
+metals = data.get('metals', [])
+metal_html = ''
+if metals:
+    mi = ''
+    for m in metals:
+        n = escape(m.get('name',''))
+        p = escape(m.get('price',''))
+        ch = escape(m.get('change',''))
+        cls = 'up' if ch.startswith('+') else 'down' if ch.startswith('-') else ''
+        mi += '<div class="ri"><span class="rn">'+n+'</span><span class="sv">'+p+'</span><span class="rv '+cls+'">'+ch+'</span></div>'
+    metal_html = '<div class="se"><div class="sh"><span class="st">🥇 贵金属</span><span class="sc">实时</span></div><div class="rg">'+mi+'</div></div>'
+
+# 成交额排行
+volumes = data.get('volumes', [])
+vol_html = ''
+if volumes:
+    vi = ''
+    for i, v in enumerate(volumes[:8]):
+        n = escape(v.get('name',''))
+        cd = escape(v.get('code',''))
+        pr = escape(v.get('price',''))
+        ch = escape(v.get('change',''))
+        vl = escape(v.get('vol',''))
+        cls = 'up' if ch.startswith('+') else 'down' if ch.startswith('-') else ''
+        ci = cd[-4:] if len(cd) >= 4 else cd
+        vi += '<div class="vi"><span class="vr">'+str(i+1)+'</span><span class="vn">'+n+'</span><span class="vp">'+pr+'</span><span class="vc '+cls+'">'+ch+'</span><span class="vv">'+vl+'</span></div>'
+    vol_html = '<div class="se"><div class="sh"><span class="st">📊 A股成交额排行</span><span class="sc">'+str(len(volumes))+'只</span></div>'+vi+'</div>'
+
+fx_html = ''  # 不再单独显示汇率
 
 # 热卖榜
 shop_html = ''
@@ -221,7 +250,7 @@ if ranks:
     if rank_inner:
         rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
 
-body += market_html + fx_html + rank_html + shop_html
+body += market_html + metal_html + vol_html + rank_html + shop_html
 body += hl_html + hw_html + news_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
@@ -273,6 +302,12 @@ nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
 .ri{display:flex;justify-content:space-between;background:rgba(255,255,255,0.006);border-radius:3px;padding:2px 6px;font-size:10px}
 .rn{color:#6b7a8d}
 .rv{font-weight:600;color:#818cf8}
+.vi{display:flex;gap:2px;background:rgba(255,255,255,0.006);border-radius:3px;padding:2px 6px;font-size:9px;align-items:center}
+.vr{color:#4a5a6d;min-width:10px;text-align:center}
+.vn{flex:1;font-weight:500}
+.vp{min-width:40px;text-align:right}
+.vc{min-width:42px;text-align:right}
+.vv{color:#3d4a5d;min-width:35px;text-align:right}
 .tgs{display:flex;flex-wrap:wrap;gap:3px;padding:1px 0 3px}
 .tg{background:rgba(99,102,241,0.04);color:#818cf8;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:500}
 .srcs{font-size:8px;color:#3d4a5d;line-height:1.5;padding:1px 0}
