@@ -40,7 +40,7 @@ def main():
         news.extend(data['more'])
         print(f'垂直: {len(data["more"])}')
     
-    # 4. 热卖榜采集器（新）
+    # 4. 热议话题采集器
     data = load('shop_news.json')
     if 'shop' in data:
         shop_items = data['shop']
