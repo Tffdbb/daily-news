@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """贵金属 + A股成交额排行采集器"""
-import json, subprocess, re
+import json, subprocess, re, urllib.request, urllib.error, ssl
+
+_CTX = ssl.create_default_context()
+_CTX.check_hostname = False; _CTX.verify_mode = ssl.CERT_NONE
+def fallback(url):
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0'}), timeout=10, context=_CTX)
+        b = r.read()
+        try: return b.decode('utf-8')
+        except: return b.decode('gbk','replace')
+    except: return ''
 
 def curl(url):
     try:
@@ -42,6 +52,8 @@ def fetch():
 
     # 2. A股成交额排行
     h2 = curl('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=8&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f20&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f12,f14,f20')
+    if not h2 or len(h2) < 50:
+        h2 = fallback(url2)
     try:
         j2 = json.loads(h2)
         items2 = j2.get('data',{}).get('diff',[])
@@ -60,6 +72,26 @@ def fetch():
             })
     except: pass
 
+    # 如果HTTP不行，用备选URL
+    if not result['volume']:
+        url3 = 'https://push2his.eastmoney.com/api/qt/stock/fflow/kline/get?secid=0.1&fields=f12,f14,f62'
+        # 换另一种排序接口
+        h3 = curl('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=8&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f62&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f12,f14,f62')
+        try:
+            j3 = json.loads(h3)
+            for it in j3.get('data',{}).get('diff',[]):
+                name = it.get('f14','')
+                code = it.get('f12','')
+                price = it.get('f2',0)
+                change = it.get('f3',0)
+                vol_yuan = it.get('f62',0) / 1e8  # 成交额
+                result['volume'].append({
+                    'name': name, 'code': code,
+                    'price': f'{price:.2f}' if price < 1000 else f'{price:.1f}',
+                    'change': f'{change:+.2f}%' if change else '',
+                    'vol': f'{vol_yuan:.0f}亿'
+                })
+        except: pass
     return result
 
 if __name__ == '__main__':
