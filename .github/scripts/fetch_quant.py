@@ -60,9 +60,10 @@ def main():
         url = 'https://push2.eastmoney.com/api/qt/clist/get?pn=%d&pz=100&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f62&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f5,f6,f7,f8,f9,f10,f12,f14,f15,f16,f17,f18,f20,f21,f23,f25,f37,f38,f62,f115,f152,f168,f169,f170,f171' % page
         h = get(url)
         try:
-            items = json.loads(h).get('data',{}).get('diff',[])
+            items = json.loads(h).get('data',{}).get('diff',[]) or []
             all_.extend(items)
-        except: pass
+        except:
+            items = []
         if len(items) < 100: break
     picks = pick(all_)
     with open('quant_picks.json','w',encoding='utf-8') as f:
