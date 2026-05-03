@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""贵金属 + A股成交额排行采集器"""
-import json, subprocess, re, urllib.request, urllib.error, ssl
+"""贵金属（黄金元/克，白银元/克）+ A股当日成交额排行"""
+import json, subprocess, urllib.request, urllib.error, ssl
 
 _CTX = ssl.create_default_context()
 _CTX.check_hostname = False; _CTX.verify_mode = ssl.CERT_NONE
@@ -28,22 +28,26 @@ def get(url):
 def fetch():
     result = {'metals': [], 'volume': []}
 
-    # 1. 贵金属（黄金ETF折算元/克，白银LOF折算元/克）
+    # 1. 贵金属
+    # 黄金ETF(159934) = 1份≈0.01克 → 金价元/克 = price × 100
+    # 白银LOF(161226) = 跟踪LBMA银价, 1份≈0.00032盎司≈0.01克 → 银价元/克 = price × 100
+    # 简化：都按×100近似
     h = get('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&fields=f2,f3,f4,f12,f14&secids=0.159934,0.161226')
     try:
         for it in json.loads(h).get('data',{}).get('diff',[]):
             name = it.get('f14','')
             price = it.get('f2',0)
             change = it.get('f3',0)
+            chg_s = f'{change:+.2f}%' if change else '0%'
             if '黄金' in name:
-                gold_g = round(price * 100, 1)
-                result['metals'].append({'name':'黄金','price':f'{gold_g}元/克','change':f'{change:+.2f}%' if change else '0%'})
+                g = round(price * 100, 1)
+                result['metals'].append({'name':'黄金','price':f'{g}元/克','change':chg_s})
             elif '白银' in name:
-                gold_g = round(price / 0.031, 2)
-                result['metals'].append({'name':'白银','price':f'{gold_g}元/克','change':f'{change:+.2f}%' if change else '0%'})
+                g = round(price * 100, 2)
+                result['metals'].append({'name':'白银','price':f'{g}元/克','change':chg_s})
     except: pass
 
-    # 2. A股当日成交额排行（f62=当日成交额元）
+    # 2. A股当日成交额排行
     h2 = get('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=8&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f62&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f12,f14,f62')
     try:
         for it in json.loads(h2).get('data',{}).get('diff',[]):
