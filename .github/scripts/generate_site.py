@@ -154,6 +154,8 @@ except: pass
 
 shop_items = data.get('shop', [])
 ranks = data.get('ranks', [])
+ghs = data.get('trending', [])
+zhs = data.get('zhihu', [])
 
 nav = ''
 for c in order:
@@ -253,7 +255,6 @@ if quants:
     q_html = '<div class="se"><div class="sh"><span class="st">📈 量化选股</span><span class="sc">多因子评分</span></div>'+qi+'</div>'
 
 # GitHub Trending
-ghs = data.get('trending', [])
 gh_html = ''
 if ghs:
     gi = ''
@@ -270,7 +271,6 @@ if ghs:
     gh_html = '<div class="se" id="gtrending"><div class="sh"><span class="st">&#127942; GitHub 今日热榜</span><span class="sc">'+str(len(ghs))+'个项目</span></div>'+gi+'</div>'
 
 # 知乎热榜
-zhs = data.get('zhihu', [])
 zh_html = ''
 if zhs:
     zi = ''
