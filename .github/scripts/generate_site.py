@@ -90,17 +90,26 @@ for item in all_hl_candidates:
     headlines.append(item)
     if len(headlines) >= 6: break
 
-# 股票
-stks = [
-    {'n':'上证','p':'3296','c':'15','r':'0.46%','cls':'up'},
-    {'n':'深证','p':'10583','c':'42','r':'0.40%','cls':'up'},
-    {'n':'创业板','p':'1932','c':'-5','r':'-0.26%','cls':'down'},
-    {'n':'恒生','p':'22358','c':'287','r':'1.30%','cls':'up'},
-    {'n':'道琼斯','p':'41603','c':'164','r':'0.40%','cls':'up'},
-    {'n':'纳斯达克','p':'17617','c':'-36','r':'-0.20%','cls':'down'},
-    {'n':'标普','p':'5592','c':'12','r':'0.21%','cls':'up'},
-    {'n':'黄金','p':'2885','c':'18','r':'0.63%','cls':'up'},
-]
+# 股票（真实行情由脚本启动时通过东方财富API获取）
+import subprocess, json as jmod
+def fetch_market():
+    try:
+        h = subprocess.run(['curl','-sL','https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&fields=f2,f3,f4,f12,f14&secids=1.000001,0.399001,0.399006,1.HSI,1.DJI,1.IXIC,1.SPX,113.au0'], capture_output=True, timeout=8, text=True).stdout
+        j = jmod.loads(h)
+        items = j.get('data',{}).get('diff',[])
+        m = {'000001':'上证','399001':'深证','399006':'创业板','HSI':'恒生','DJI':'道琼斯','IXIC':'纳斯达克','SPX':'标普'}
+        res = []
+        for it in items:
+            code = it.get('f12','')
+            name = it.get('f14','') or m.get(code,code)
+            price = it.get('f2',0)
+            chg = it.get('f3',0) or 0
+            disp = f'{chg:+.2f}%'
+            if 'au0' in code: disp = f'{price:.1f}'
+            res.append({'n':name,'p':f'{price:.0f}' if price > 10 else f'{price:.1f}','c':disp,'cls':'up' if chg >= 0 else 'down'})
+        return res
+    except: return [{'n':'上证','p':'--','c':'--','cls':''}]
+stks = fetch_market()
 sr = ''
 for s in stks:
     sn = escape(s.get('n',''))
@@ -220,6 +229,25 @@ if volumes:
         vi += '<div class="vi"><span class="vr">'+str(i+1)+'</span><span class="vn">'+n+'</span><span class="vp">'+pr+'</span><span class="vc '+cls+'">'+ch+'</span><span class="vv">'+vl+'</span></div>'
     vol_html = '<div class="se"><div class="sh"><span class="st">📊 A股成交额排行</span><span class="sc">'+str(len(volumes))+'只</span></div>'+vi+'</div>'
 
+# 量化选股
+quants = data.get('quant', [])
+q_html = ''
+if quants:
+    qi = ''
+    for i, q in enumerate(quants):
+        n = escape(q.get('name',''))
+        cd = escape(q.get('code',''))
+        ch = escape(q.get('chg',''))
+        vl = escape(q.get('volRatio',''))
+        sc = escape(str(q.get('score','')))
+        pe = escape(str(q.get('pe','')))
+        tb = escape(q.get('turnover',''))
+        cls = 'up' if ch and float(ch) >= 0 else 'down'
+        ch_s = ('+'+ch+'%') if ch and float(ch) >= 0 else (ch+'%' if ch else '')
+        ci = cd[-4:] if len(cd) >= 4 else cd
+        qi += '<div class="qi" onclick="alert('+"'"+cd+' '+n+"'"+')"><span class="qr">'+str(i+1)+'</span><span class="qn">'+n+'</span><span class="qch '+cls+'">'+ch_s+'</span><span class="qpe">PE'+pe+'</span><span class="qsc">'+sc+'</span></div>'
+    q_html = '<div class="se"><div class="sh"><span class="st">📈 量化选股</span><span class="sc">多因子评分</span></div>'+qi+'</div>'
+
 fx_html = ''  # 不再单独显示汇率
 
 # 热卖榜
@@ -250,7 +278,7 @@ if ranks:
     if rank_inner:
         rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
 
-body += market_html + metal_html + vol_html + rank_html + shop_html
+body += market_html + metal_html + vol_html + q_html + rank_html + shop_html
 body += hl_html + hw_html + news_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
@@ -308,6 +336,13 @@ nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
 .vp{min-width:40px;text-align:right}
 .vc{min-width:42px;text-align:right}
 .vv{color:#3d4a5d;min-width:35px;text-align:right}
+.qi{display:flex;gap:2px;background:rgba(255,255,255,0.006);border-radius:3px;padding:3px 6px;font-size:9px;align-items:center;cursor:pointer}
+.qi:last-child{border-bottom:none}
+.qr{color:#4a5a6d;min-width:10px;text-align:center}
+.qn{flex:1;font-weight:500}
+.qch{min-width:44px;text-align:right;font-weight:600}
+.qpe{color:#3d4a5d;min-width:34px;text-align:right}
+.qsc{color:#818cf8;min-width:22px;text-align:right;font-weight:600}
 .tgs{display:flex;flex-wrap:wrap;gap:3px;padding:1px 0 3px}
 .tg{background:rgba(99,102,241,0.04);color:#818cf8;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:500}
 .srcs{font-size:8px;color:#3d4a5d;line-height:1.5;padding:1px 0}
