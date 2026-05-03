@@ -39,6 +39,9 @@ jobs:
       - name: Shop collector
         run: timeout 60 python3 .github/scripts/fetch_shop.py || echo 'SHOP_FAILED'
 
+      - name: Metal & Volume
+        run: timeout 30 python3 .github/scripts/fetch_metal_vol.py || echo 'MV_FAILED'
+
       - name: Merge
         run: python3 .github/scripts/merge_news.py
 
