@@ -14,6 +14,8 @@ def main():
     groups_holder = {}
     shop_items = []
     ranks_from_shop = []
+    metals_holder = []
+    volumes_holder = []
     stocks_holder = []
     forex_holder = {}
     
@@ -49,6 +51,15 @@ def main():
     if 'ranks' in data:
         ranks_from_shop = data['ranks']
         print(f'排名: {len(ranks_from_shop)}')
+    
+    # 5. 贵金属+成交额
+    data5 = load('metal_volume.json')
+    if 'metals' in data5:
+        metals_holder = data5['metals']
+        print(f'贵金属: {len(metals_holder)}')
+    if 'volume' in data5:
+        volumes_holder = data5['volume']
+        print(f'成交额: {len(volumes_holder)}')
     
     # 去重
     seen = set()
@@ -92,6 +103,8 @@ def main():
     output = {'news': deduped, 'groups': groups,
               'shop': deduped_shop,
               'ranks': ranks_from_shop,
+              'metals': metals_holder,
+              'volumes': volumes_holder,
               'stocks': stocks_holder or [], 'forex': forex_holder or {},
               'labels': data.get('labels', []) if data else []}
     
