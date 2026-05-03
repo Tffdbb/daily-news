@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""热卖榜采集器 - 京东/淘宝/什么值得买热销商品"""
+"""热卖榜采集器 - 什么值得买好价/热门"""
 import json, subprocess, re
 
 def curl(url):
@@ -12,48 +12,45 @@ def curl(url):
 def collect():
     all_items = []
 
-    # 1. 什么值得买 - 热销榜
-    print('  Fetching 什么值得买...')
+    # 1. 什么值得买 - 好价
+    print('  Fetching 什么值得买好价...')
     h = curl('https://www.smzdm.com/')
-    # 找商品标题
+    # JSON 嵌入的数据
     for m in re.finditer(r'"title":"([^"]{4,60})"', h):
         t = m.group(1).strip()
-        if any(x in t for x in ['优惠','优惠券','促销','满减','好价']):
-            continue
-        if len(t) >= 6 and t[:8] not in [x.get('t','')[:8] for x in all_items]:
-            all_items.append({'t':t[:50], 'src':'什么值得买', 'cat':'shop'})
+        if not t or len(t) < 6: continue
+        if any(x in t for x in ['优惠券','促销','满减','签到','抽奖']): continue
+        if t[:8] in [x.get('t','')[:8] for x in all_items]: continue
+        all_items.append({'t':t[:50], 'src':'什么值得买', 'cat':'shop'})
 
-    # 2. 京东排行榜 - 实时热卖
-    print('  Fetching 京东排行榜...')
-    h = curl('https://www.jd.com/')
-    for m in re.finditer(r'<a[^>]*href="(//item\.jd\.com/[^"]+)"[^>]*>([^<]{6,50})</a>', h):
-        t = m.group(2).strip()
-        # 去重
-        if t[:8] in [x.get('t','')[:8] for x in all_items]:
-            continue
-        t = re.sub(r'<[^>]+>', '', t)
-        t = re.sub(r'\s+', ' ', t).strip()
-        if len(t) >= 6 and len(t) <= 50:
-            all_items.append({'t':t[:50], 'u':'https:' + m.group(1), 'src':'京东热卖', 'cat':'shop'})
-        if len(all_items) >= 20:
-            break
+    # 2. 什么值得买 - 排行榜
+    print('  Fetching 值得买排行榜...')
+    h = curl('https://www.smzdm.com/top/')
+    for m in re.finditer(r'"title":"([^"]{6,60})"', h):
+        t = m.group(1).strip()
+        if not t or len(t) < 6: continue
+        if t[:8] in [x.get('t','')[:8] for x in all_items]: continue
+        all_items.append({'t':t[:50], 'src':'值得买热榜', 'cat':'shop'})
 
-    # 3. 淘宝热销
+    # 3. 淘宝/天猫热销API
     print('  Fetching 淘宝热销...')
     h = curl('https://www.taobao.com/')
-    for m in re.finditer(r'"title":"([^"]{6,50})"', h):
+    # 淘宝首页搜索框的热搜词
+    for m in re.finditer(r'"text":"([^"]{4,30})"', h):
         t = m.group(1).strip()
-        t = re.sub(r'<[^>]+>', '', t)
-        t = re.sub(r'\s+', ' ', t).strip()
-        if t[:8] in [x.get('t','')[:8] for x in all_items]:
-            continue
-        if len(t) >= 6 and '广告' not in t:
-            all_items.append({'t':t[:50], 'src':'淘宝热销', 'cat':'shop'})
-        if len(all_items) >= 25:
-            break
+        if '广告' in t or '推广' in t: continue
+        if t[:6] in [x.get('t','')[:6] for x in all_items]: continue
+        if len(t) >= 4:
+            all_items.append({'t':'🔥 ' + t, 'src':'淘宝热搜', 'cat':'shop'})
 
-    # 4. 抖音电商热卖（通过什么值得买补充）
-    # 已经通过 smzdm 获取了
+    # 4. 抖音热卖（通过抖音开放数据）
+    print('  Fetching 抖音热卖...')
+    h = curl('https://www.douyin.com/')
+    for m in re.finditer(r'"word":"([^"]{4,30})"', h):
+        t = m.group(1).strip()
+        if t[:6] in [x.get('t','')[:6] for x in all_items]: continue
+        if len(t) >= 4:
+            all_items.append({'t':'🎬 ' + t, 'src':'抖音热榜', 'cat':'shop'})
 
     # 去重
     seen=set();deduped=[]
