@@ -149,7 +149,7 @@ nav = ''
 for c in order:
     nav += '<a href="#g'+c+'">'+cat_names[c]+'</a>'
 if shop_items:
-    nav += '<a href="#gshop">🛒 热卖榜</a>'
+    nav += '<a href="#gshop">📋 热议话题</a>'
 
 # 头条
 hl_html = ''
@@ -196,14 +196,12 @@ fx_html = '<div class="se"><div class="sh"><span class="st">💱 汇率</span><s
 shop_html = ''
 if shop_items:
     shop_inner = ''
-    shop_srcs = {}
     for i, item in enumerate(shop_items[:15]):
         nn = escape(item.get('t',''))[:45]
-        s = escape(item.get('src','什么值得买'))
-        shop_srcs[s] = shop_srcs.get(s, 0) + 1
+        s = escape(item.get('src','热议'))
         uu = item.get('u','#')
         shop_inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#f97316">'+str(i+1)+'</span><span class="nn">'+nn+'</span><span class="ns">'+s+'</span></div>'
-    shop_html = '<div class="se" id="gshop"><div class="sh"><span class="st">🛒 热卖榜</span><span class="sc">'+str(len(shop_items))+'款</span></div>'+shop_inner+'</div>'
+    shop_html = '<div class="se" id="gshop"><div class="sh"><span class="st">📋 热议话题</span><span class="sc">'+str(len(shop_items))+'条</span></div>'+shop_inner+'</div>'
 
 body = ''
 body += '<header>'
