@@ -13,6 +13,7 @@ def main():
     news = []
     groups_holder = {}
     shop_items = []
+    ranks_from_shop = []
     stocks_holder = []
     forex_holder = {}
     
@@ -45,6 +46,9 @@ def main():
     if 'shop' in data:
         shop_items = data['shop']
         print(f'热卖榜: {len(shop_items)}')
+    if 'ranks' in data:
+        ranks_from_shop = data['ranks']
+        print(f'排名: {len(ranks_from_shop)}')
     
     # 去重
     seen = set()
@@ -87,6 +91,7 @@ def main():
     
     output = {'news': deduped, 'groups': groups,
               'shop': deduped_shop,
+              'ranks': ranks_from_shop,
               'stocks': stocks_holder or [], 'forex': forex_holder or {},
               'labels': data.get('labels', []) if data else []}
     
