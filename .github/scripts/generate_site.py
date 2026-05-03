@@ -144,6 +144,7 @@ try:
 except: pass
 
 shop_items = data.get('shop', [])
+ranks = data.get('ranks', [])
 
 nav = ''
 for c in order:
@@ -208,7 +209,19 @@ body += '<header>'
 body += '<div class="top"><span class="tl">📊 每日价值资讯</span><span class="live"></span></div>'
 body += '<div class="sub"><span>'+dc+'</span><span class="gr">'+period_desc+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>'
 body += wh + '<nav>'+nav+'</nav></header>'
-body += market_html + fx_html + shop_html
+# 平台流量排名行
+rank_html = ''
+if ranks:
+    rank_inner = ''
+    for r in ranks[:13]:
+        n = r.get('name','')
+        rk = r.get('rank',0)
+        if n and rk:
+            rank_inner += '<div class="ri"><span class="rn">'+n+'</span><span class="rv">#'+str(rk)+'</span></div>'
+    if rank_inner:
+        rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
+
+body += market_html + fx_html + rank_html + shop_html
 body += hl_html + hw_html + news_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
@@ -254,9 +267,12 @@ nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
 .sv{font-size:11px;font-weight:600;margin-left:auto}
 .sc2{font-size:9px;font-weight:500;min-width:45px;text-align:right;flex-shrink:0}
 .up{color:#22c55e}.down{color:#ef4444}
-.fg{display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.fg,.rg{display:grid;grid-template-columns:1fr 1fr;gap:2px}
 .fi{display:flex;justify-content:space-between;background:rgba(255,255,255,0.006);border-radius:3px;padding:2px 6px;font-size:10px}
 .fv{font-weight:600}
+.ri{display:flex;justify-content:space-between;background:rgba(255,255,255,0.006);border-radius:3px;padding:2px 6px;font-size:10px}
+.rn{color:#6b7a8d}
+.rv{font-weight:600;color:#818cf8}
 .tgs{display:flex;flex-wrap:wrap;gap:3px;padding:1px 0 3px}
 .tg{background:rgba(99,102,241,0.04);color:#818cf8;padding:1px 6px;border-radius:8px;font-size:9px;font-weight:500}
 .srcs{font-size:8px;color:#3d4a5d;line-height:1.5;padding:1px 0}
