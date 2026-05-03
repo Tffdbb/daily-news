@@ -143,9 +143,13 @@ try:
     wh = '<div class="wbar">'+we+' 北京 '+tm+'&#176; '+de+'  &#168;'+ws+'km/h</div>'
 except: pass
 
+shop_items = data.get('shop', [])
+
 nav = ''
 for c in order:
     nav += '<a href="#g'+c+'">'+cat_names[c]+'</a>'
+if shop_items:
+    nav += '<a href="#gshop">🛒 热卖榜</a>'
 
 # 头条
 hl_html = ''
@@ -188,12 +192,25 @@ src_html = ' · '.join(escape(s) for s in srcs)
 market_html = '<div class="se" id="m"><div class="sh"><span class="st">📊 全球市场</span><span class="sc">实时</span></div><div class="sg">'+sr+'</div></div>'
 fx_html = '<div class="se"><div class="sh"><span class="st">💱 汇率</span><span class="sc" style="font-size:9px;color:#4a5a6d">1 CNY =</span></div><div class="fg">'+fr+'</div></div>'
 
+# 热卖榜
+shop_html = ''
+if shop_items:
+    shop_inner = ''
+    shop_srcs = {}
+    for i, item in enumerate(shop_items[:15]):
+        nn = escape(item.get('t',''))[:45]
+        s = escape(item.get('src','什么值得买'))
+        shop_srcs[s] = shop_srcs.get(s, 0) + 1
+        uu = item.get('u','#')
+        shop_inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#f97316">'+str(i+1)+'</span><span class="nn">'+nn+'</span><span class="ns">'+s+'</span></div>'
+    shop_html = '<div class="se" id="gshop"><div class="sh"><span class="st">🛒 热卖榜</span><span class="sc">'+str(len(shop_items))+'款</span></div>'+shop_inner+'</div>'
+
 body = ''
 body += '<header>'
 body += '<div class="top"><span class="tl">📊 每日价值资讯</span><span class="live"></span></div>'
 body += '<div class="sub"><span>'+dc+'</span><span class="gr">'+period_desc+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>'
 body += wh + '<nav>'+nav+'</nav></header>'
-body += market_html + fx_html
+body += market_html + fx_html + shop_html
 body += hl_html + hw_html + news_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
