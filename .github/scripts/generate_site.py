@@ -159,7 +159,11 @@ nav = ''
 for c in order:
     nav += '<a href="#g'+c+'">'+cat_names[c]+'</a>'
 if shop_items:
-    nav += '<a href="#gshop">📋 热议话题</a>'
+    nav += '<a href="#gshop">📋 热议</a>'
+if ghs:
+    nav += '<a href="#gtrending">🏆 GitHub</a>'
+if zhs:
+    nav += '<a href="#gzhihu">💬 知乎</a>'
 
 # 头条
 hl_html = ''
@@ -222,7 +226,7 @@ if volumes:
         n = escape(v.get('name',''))
         cd = escape(v.get('code',''))
         pr = escape(v.get('price',''))
-        ch = escape(str(v.get('change','')))
+        ch = escape(v.get('change',''))
         vl = escape(v.get('vol',''))
         cls = 'up' if ch.startswith('+') else 'down' if ch.startswith('-') else ''
         ci = cd[-4:] if len(cd) >= 4 else cd
@@ -235,10 +239,10 @@ q_html = ''
 if quants:
     qi = ''
     for i, q in enumerate(quants):
-        n = escape(str(q.get('name','')))
-        cd = escape(str(q.get('code','')))
-        ch = escape(str(q.get('chg','')))
-        vl = escape(str(q.get('volRatio','')))
+        n = escape(q.get('name',''))
+        cd = escape(q.get('code',''))
+        ch = escape(q.get('chg',''))
+        vl = escape(q.get('volRatio',''))
         sc = escape(str(q.get('score','')))
         pe = escape(str(q.get('pe','')))
         tb = escape(q.get('turnover',''))
@@ -247,6 +251,34 @@ if quants:
         ci = cd[-4:] if len(cd) >= 4 else cd
         qi += '<div class="qi" onclick="alert('+"'"+cd+' '+n+"'"+')"><span class="qr">'+str(i+1)+'</span><span class="qn">'+n+'</span><span class="qch '+cls+'">'+ch_s+'</span><span class="qpe">PE'+pe+'</span><span class="qsc">'+sc+'</span></div>'
     q_html = '<div class="se"><div class="sh"><span class="st">📈 量化选股</span><span class="sc">多因子评分</span></div>'+qi+'</div>'
+
+# GitHub Trending
+ghs = data.get('trending', [])
+gh_html = ''
+if ghs:
+    gi = ''
+    for i, r in enumerate(ghs[:10]):
+        n = escape(r.get('t',''))
+        d = escape(r.get('desc',''))
+        st = r.get('stars',0)
+        ln = escape(r.get('lang',''))
+        uu = r.get('u','#')
+        stars_tag = ''
+        if st: stars_tag = ' <span style="color:#f59e0b">&#9733;'+str(st)+'</span>'
+        lang_tag = (' <span style="color:#4a5a6d;font-size:7px">'+ln+'</span>') if ln else ''
+        gi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#24292e">'+str(i+1)+'</span><span class="nn">'+n[:40]+'</span><span class="ns">'+lang_tag+stars_tag+'</span></div>'
+    gh_html = '<div class="se" id="gtrending"><div class="sh"><span class="st">&#127942; GitHub 今日热榜</span><span class="sc">'+str(len(ghs))+'个项目</span></div>'+gi+'</div>'
+
+# 知乎热榜
+zhs = data.get('zhihu', [])
+zh_html = ''
+if zhs:
+    zi = ''
+    for i, z in enumerate(zhs[:8]):
+        t = escape(z.get('t',''))[:42]
+        uu = z.get('u','#')
+        zi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\')"><span class="ni" style="background:#0066ff">'+str(i+1)+'</span><span class="nn">'+t+'</span><span class="ns">知乎</span></div>'
+    zh_html = '<div class="se" id="gzhihu"><div class="sh"><span class="st">&#128172; 知乎热榜</span><span class="sc">'+str(len(zhs))+'条</span></div>'+zi+'</div>'
 
 fx_html = ''  # 不再单独显示汇率
 
@@ -278,7 +310,7 @@ if ranks:
     if rank_inner:
         rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
 
-body += market_html + metal_html + vol_html + q_html + rank_html + shop_html
+body += market_html + metal_html + vol_html + q_html + gh_html + rank_html + shop_html + zh_html
 body += hl_html + hw_html + news_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
