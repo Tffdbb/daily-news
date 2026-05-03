@@ -113,12 +113,14 @@ def main():
               'metals': metals_holder,
               'volumes': volumes_holder,
               'quant': quant_holder,
+              'trending': trending_holder,
+              'zhihu': zhihu_holder,
               'stocks': stocks_holder or [], 'forex': forex_holder or {},
               'labels': data.get('labels', []) if data else []}
     
     with open('news_data.json', 'w', encoding='utf-8') as f:
         json.dump(output, f, ensure_ascii=False)
-    print(f'写入 {len(deduped)} 条, {sum(len(v) for v in groups.values())} 已分组, 热卖 {len(deduped_shop)} 条')
+    print(f'写入 {len(deduped)} 条, {sum(len(v) for v in groups.values())} 已分组, 热卖 {len(deduped_shop)} 条, Trending {len(trending_holder)}, 知乎 {len(zhihu_holder)}')
 
 if __name__ == '__main__':
     main()
