@@ -91,9 +91,28 @@ def s2():
     except: return []
 
 def s3():
-    """财联社"""
-    i = pat(f_either('https://www.cls.cn/'),r'"title"\s*:\s*"([^"]{6,50})"',12)
-    return [{'t':t[:45],'src':'财联社','cat':'finance','u':'https://www.cls.cn/'} for t in i]
+    """财联社深度（标题+链接+分类）"""
+    items = []
+    h = f_either('https://www.cls.cn/telegraph')
+    # 尝试获取带链接的条目
+    for m in re.finditer(r'"id":(\d+),"content":"([^"]{8,60})"', h):
+        nid = m.group(1)
+        t = m.group(2).strip()[:45]
+        if not is_good(t[:30]): continue
+        cat = 'tech' if any(k in t for k in ['AI','大模型','芯片','苹果','华为','小米','科技','网络','数据','智能','手机','电脑','汽车','新能源','机器'])
+              else 'finance'
+        items.append({'t':t, 'src':'财联社', 'cat':cat, 'u':'https://www.cls.cn/detail/'+nid})
+        if len(items) >= 20: break
+    # 首页标题补充
+    if len(items) < 10:
+        h2 = f_either('https://www.cls.cn/')
+        for m in re.finditer(r'"title"\s*:\s*"([^"]{6,50})"', h2):
+            t = m.group(1).strip()[:45]
+            if not is_good(t[:30]) or any(x['t'] == t for x in items): continue
+            cat = 'tech' if any(k in t for k in ['AI','大模型','芯片','苹果','华为','小米','科技','网络','数据','智能','手机','电脑','汽车','新能源','机器']) else 'finance'
+            items.append({'t':t, 'src':'财联社', 'cat':cat, 'u':'https://www.cls.cn/'})
+            if len(items) >= 25: break
+    return items[:25]
 
 def s5():
     """每经"""
@@ -118,10 +137,8 @@ def s8():
     return [{'t':x['t'][:42],'src':'网易财经','cat':'finance','u':x['u']} for x in i]
 
 def s27():
-    """财联社电报"""
-    h = f_either('https://www.cls.cn/telegraph')
-    i = pat(h,r'"content":"([^"]{8,48})"',10)
-    return [{'t':t[:42],'src':'财联社电报','cat':'finance','u':'https://www.cls.cn/telegraph'} for t in i]
+    """财联社电报（合并到s3了，保留少量补充）"""
+    return []
 
 def s28():
     """华尔街深度"""
