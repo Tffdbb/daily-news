@@ -19,62 +19,44 @@ def curl(url):
         return r.stdout
     except: return ''
 
+def get(url):
+    h = curl(url)
+    if not h or len(h) < 50:
+        h = fallback(url)
+    return h
+
 def fetch():
     result = {'metals': [], 'volume': []}
 
-    # 1. 黄金ETF（折算国际金价）
-    # 黄金ETF(159934) 价格10.1元 ≈ 1克黄金≈？元
-    # 公式：1克黄金 = 黄金ETF价格 × 100 ÷ 持仓份额（约1份=0.01克）
-    # 简单近似：黄金ETF价格 × 100 ≈ 国内金价(元/克)
-    h = curl('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&fields=f2,f3,f4,f12,f14&secids=0.159934,0.518880,0.161226')
+    # 1. 贵金属（黄金ETF折算元/克，白银LOF折算元/克）
+    h = get('https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&fields=f2,f3,f4,f12,f14&secids=0.159934,0.161226')
     try:
-        j = json.loads(h)
-        items = j.get('data',{}).get('diff',[])
-        for it in items:
+        for it in json.loads(h).get('data',{}).get('diff',[]):
             name = it.get('f14','')
             price = it.get('f2',0)
             change = it.get('f3',0)
             if '黄金' in name:
-                # 黄金ETF(159934) 价格10.1元 = 1份=0.01克 → 1克=100份=价格×100
-                # 更准：实际持仓约每份0.01克，金价元/克 = price / 0.01 = price * 100
-                gold_g = round(price / 0.01, 1) if price > 0 else 0
-                result['metals'].append({
-                    'name': '黄金',
-                    'price': f'{gold_g}元/克',
-                    'change': f'{change:+.2f}%' if change else '0%'
-                })
+                gold_g = round(price * 100, 1)
+                result['metals'].append({'name':'黄金','price':f'{gold_g}元/克','change':f'{change:+.2f}%' if change else '0%'})
             elif '白银' in name:
-                # 白银LOF(161226)跟踪国际银价，1份≈0.001盎司≈0.031克
-                # 元/克 = price / 0.031
-                silver_g = round(price / 0.031, 2) if price > 0 else 0
-                result['metals'].append({
-                    'name': '白银',
-                    'price': f'{silver_g}元/克',
-                    'change': f'{change:+.2f}%' if change else '0%'
-                })
+                gold_g = round(price / 0.031, 2)
+                result['metals'].append({'name':'白银','price':f'{gold_g}元/克','change':f'{change:+.2f}%' if change else '0%'})
     except: pass
 
-    # 2. A股成交额排行（当日成交额f62）
-    h2 = curl('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=8&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f62&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f12,f14,f62')
-    if not h2 or len(h2) < 50:
-        h2 = fallback(h2)
+    # 2. A股当日成交额排行（f62=当日成交额元）
+    h2 = get('https://push2.eastmoney.com/api/qt/clist/get?pn=1&pz=8&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f62&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f2,f3,f4,f12,f14,f62')
     try:
-        j2 = json.loads(h2)
-        items2 = j2.get('data',{}).get('diff',[])
-        for it in items2:
+        for it in json.loads(h2).get('data',{}).get('diff',[]):
             name = it.get('f14','')
             code = it.get('f12','')
             price = it.get('f2',0)
             change = it.get('f3',0)
-            # f62是当日成交额(元)，/1e8转亿
             amt = it.get('f62',0) / 1e8
-            result['volume'].append({
-                'name': name,
-                'code': code,
-                'price': f'{price:.2f}' if price < 1000 else f'{price:.1f}',
-                'change': f'{change:+.2f}%' if change else '',
-                'vol': f'{amt:.1f}亿'
-            })
+            p = f'{price:.2f}'
+            if price >= 100: p = f'{price:.1f}'
+            result['volume'].append({'name':name,'code':code,'price':p,'change':f'{change:+.2f}%' if change else '','vol':f'{amt:.1f}亿'})
+    except: pass
+
     return result
 
 if __name__ == '__main__':
