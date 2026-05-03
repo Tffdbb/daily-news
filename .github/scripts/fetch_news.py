@@ -99,8 +99,7 @@ def s3():
         nid = m.group(1)
         t = m.group(2).strip()[:45]
         if not is_good(t[:30]): continue
-        cat = 'tech' if any(k in t for k in ['AI','大模型','芯片','苹果','华为','小米','科技','网络','数据','智能','手机','电脑','汽车','新能源','机器'])
-              else 'finance'
+        cat = 'tech' if any(k in t for k in ['AI','大模型','芯片','苹果','华为','小米','科技','网络','数据','智能','手机','电脑','汽车','新能源','机器']) else 'finance'
         items.append({'t':t, 'src':'财联社', 'cat':cat, 'u':'https://www.cls.cn/detail/'+nid})
         if len(items) >= 20: break
     # 首页标题补充
