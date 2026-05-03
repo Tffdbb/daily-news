@@ -45,6 +45,9 @@ jobs:
       - name: Quant picker
         run: python3 .github/scripts/fetch_quant.py || echo 'QUANT_FAILED'
 
+      - name: Trending + Zhihu
+        run: python3 .github/scripts/fetch_trending.py || echo 'TRENDING_FAILED'
+
       - name: Merge
         run: python3 .github/scripts/merge_news.py
 
