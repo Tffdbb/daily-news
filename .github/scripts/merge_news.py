@@ -16,6 +16,7 @@ def main():
     ranks_from_shop = []
     metals_holder = []
     volumes_holder = []
+    quant_holder = []
     stocks_holder = []
     forex_holder = {}
     
@@ -61,6 +62,12 @@ def main():
         volumes_holder = data5['volume']
         print(f'成交额: {len(volumes_holder)}')
     
+    # 6. 量化选股
+    data6 = load('quant_picks.json')
+    if 'picks' in data6:
+        quant_holder = data6['picks']
+        print(f'量化选股: {len(quant_holder)}')
+    
     # 去重
     seen = set()
     deduped = []
@@ -105,6 +112,7 @@ def main():
               'ranks': ranks_from_shop,
               'metals': metals_holder,
               'volumes': volumes_holder,
+              'quant': quant_holder,
               'stocks': stocks_holder or [], 'forex': forex_holder or {},
               'labels': data.get('labels', []) if data else []}
     
