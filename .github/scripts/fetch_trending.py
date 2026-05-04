@@ -118,7 +118,7 @@ def fetch_hackernews():
         if len(items) >= 10: break
     return items
 
-- def main():
+def main():
     data = {}
     
     print('  GitHub Trending...')
