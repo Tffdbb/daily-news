@@ -70,11 +70,14 @@ def main():
         quant_holder = data6['picks']
         print(f'量化选股: {len(quant_holder)}')
     
-    # 7. GitHub Trending + 知乎热榜
+    # 7. GitHub Trending + HN头版 + 知乎热榜
     data7 = load('trending.json')
     if 'trending' in data7:
         trending_holder = data7['trending']
         print(f'GitHub Trending: {len(trending_holder)}')
+    if 'hackernews' in data7:
+        hackernews_holder = data7['hackernews']
+        print(f'HN头版: {len(hackernews_holder)}')
     if 'zhihu' in data7:
         zhihu_holder = data7['zhihu']
         print(f'知乎热榜: {len(zhihu_holder)}')
@@ -125,6 +128,7 @@ def main():
               'volumes': volumes_holder,
               'quant': quant_holder,
               'trending': trending_holder,
+              'hackernews': hackernews_holder,
               'zhihu': zhihu_holder,
               'stocks': stocks_holder or [], 'forex': forex_holder or {},
               'labels': data.get('labels', []) if data else []}
