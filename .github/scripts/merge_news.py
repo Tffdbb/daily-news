@@ -20,6 +20,7 @@ def main():
     stocks_holder = []
     forex_holder = {}
     trending_holder = []
+    hackernews_holder = []
     zhihu_holder = []
     
     # 1. 主采集器 (国内新闻带分组)
