@@ -22,6 +22,7 @@ def main():
     trending_holder = []
     hackernews_holder = []
     zhihu_holder = []
+    crypto_holder = []
     
     # 1. 主采集器 (国内新闻带分组)
     data = load('news_data.json')
@@ -71,7 +72,13 @@ def main():
         quant_holder = data6['picks']
         print(f'量化选股: {len(quant_holder)}')
     
-    # 7. GitHub Trending + HN头版 + 知乎热榜
+    # 7. 加密货币
+    data7a = load('crypto.json')
+    if 'crypto' in data7a:
+        crypto_holder = data7a['crypto']
+        print(f'加密货币: {len(crypto_holder)}')
+    
+    # 8. GitHub Trending + HN头版 + 知乎热榜
     data7 = load('trending.json')
     if 'trending' in data7:
         trending_holder = data7['trending']
@@ -128,6 +135,7 @@ def main():
               'metals': metals_holder,
               'volumes': volumes_holder,
               'quant': quant_holder,
+              'crypto': crypto_holder,
               'trending': trending_holder,
               'hackernews': hackernews_holder,
               'zhihu': zhihu_holder,
