@@ -157,6 +157,7 @@ ranks = data.get('ranks', [])
 ghs = data.get('trending', [])
 hns = data.get('hackernews', [])
 zhs = data.get('zhihu', [])
+cos = data.get('crypto', [])
 
 nav = ''
 for c in order:
@@ -219,6 +220,20 @@ if metals:
         cls = 'up' if ch.startswith('+') else 'down' if ch.startswith('-') else ''
         mi += '<div class="ri"><span class="rn">'+n+'</span><span class="sv">'+p+'</span><span class="rv '+cls+'">'+ch+'</span></div>'
     metal_html = '<div class="se"><div class="sh"><span class="st">🥇 贵金属</span><span class="sc">实时</span></div><div class="rg">'+mi+'</div></div>'
+
+# 加密货币
+crypto_html = ''
+if cos:
+    ci = ''
+    for c in cos[:10]:
+        sym = escape(c.get('symbol',''))
+        pr = c.get('price',0)
+        ch = c.get('change_24h','')
+        pr_str = f'${pr:,.2f}' if isinstance(pr,(int,float)) else str(pr)
+        ch_str = f'{ch:+.2f}%' if isinstance(ch,(int,float)) else str(ch)
+        cls = 'up' if isinstance(ch,(int,float)) and ch >= 0 else 'down' if isinstance(ch,(int,float)) else ''
+        ci += '<div class="ri"><span class="rn" style="font-weight:600">'+sym+'</span><span class="sv">'+pr_str+'</span><span class="rv '+cls+'">'+ch_str+'</span></div>'
+    crypto_html = '<div class="se"><div class="sh"><span class="st">₿ 加密货币</span><span class="sc">实时</span></div><div class="rg">'+ci+'</div></div>'
 
 # 成交额排行
 volumes = data.get('volumes', [])
@@ -312,7 +327,7 @@ if ranks:
         rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
 
 body += news_html
-body += market_html + metal_html + vol_html + q_html + gh_html + rank_html + shop_html + zh_html
+body += market_html + metal_html + crypto_html + vol_html + q_html + gh_html + rank_html + shop_html + zh_html
 body += hl_html + hw_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
