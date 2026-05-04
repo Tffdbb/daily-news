@@ -1,2 +1,2 @@
-# daily-news
-每日全球资讯早报
+# Daily News
+Automated news aggregation site.
