@@ -311,8 +311,9 @@ if ranks:
     if rank_inner:
         rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
 
+body += news_html
 body += market_html + metal_html + vol_html + q_html + gh_html + rank_html + shop_html + zh_html
-body += hl_html + hw_html + news_html
+body += hl_html + hw_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
 body += '<div id="bt" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">↑</div>'
