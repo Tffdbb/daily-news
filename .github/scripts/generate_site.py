@@ -155,6 +155,7 @@ except: pass
 shop_items = data.get('shop', [])
 ranks = data.get('ranks', [])
 ghs = data.get('trending', [])
+hns = data.get('hackernews', [])
 zhs = data.get('zhihu', [])
 
 nav = ''
@@ -164,6 +165,8 @@ if shop_items:
     nav += '<a href="#gshop">📋 热议</a>'
 if ghs:
     nav += '<a href="#gtrending">🏆 GitHub</a>'
+if hns:
+    nav += '<a href="#ghackernews">🌐 HN</a>'
 if zhs:
     nav += '<a href="#gzhihu">💬 知乎</a>'
 
@@ -271,6 +274,20 @@ if ghs:
     gh_html = '<div class="se" id="gtrending"><div class="sh"><span class="st">&#127942; GitHub 今日热榜</span><span class="sc">'+str(len(ghs))+'个项目</span></div>'+gi+'</div>'
 
 # 知乎热榜
+# HackerNews 头版
+hn_html = ''
+if hns:
+    hi = ''
+    for i, h in enumerate(hns[:10]):
+        t = escape(h.get('t',''))[:50]
+        uu = h.get('u','#')
+        sc = h.get('_score',0)
+        cm = h.get('_comments',0)
+        dm = escape(h.get('_domain',''))
+        tags = f'<span style="color:#888;font-size:7px"> {dm} 🔥{sc} 💬{cm}</span>' if dm else f'<span style="color:#888;font-size:7px"> 🔥{sc} 💬{cm}</span>'
+        hi += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:#ff6600">'+str(i+1)+'</span><span class="nn">'+t+'</span><span class="ns">'+tags+'</span></div>'
+    hn_html = '<div class="se" id="ghackernews"><div class="sh"><span class="st">🌐 HackerNews 头版</span><span class="sc">'+str(len(hns))+'条</span></div>'+hi+'</div>'
+
 zh_html = ''
 if zhs:
     zi = ''
@@ -310,7 +327,7 @@ if ranks:
     if rank_inner:
         rank_html = '<div class="se"><div class="sh"><span class="st">📊 平台访问量排名</span><span class="sc">Tranco全球</span></div><div class="rg">'+rank_inner+'</div></div>'
 
-body += market_html + metal_html + vol_html + q_html + gh_html + rank_html + shop_html + zh_html
+body += market_html + metal_html + vol_html + q_html + gh_html + hn_html + rank_html + shop_html + zh_html
 body += hl_html + hw_html + news_html
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
