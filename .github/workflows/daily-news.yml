@@ -48,6 +48,9 @@ jobs:
       - name: Trending + Zhihu
         run: python3 .github/scripts/fetch_trending.py || echo 'TRENDING_FAILED'
 
+      - name: Crypto price
+        run: timeout 20 python3 .github/scripts/fetch_crypto.py || echo 'CRYPTO_FAILED'
+
       - name: Quant track
         run: timeout 10 python3 .github/scripts/track_quant.py || echo 'TRACK_FAILED'
 
