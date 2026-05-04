@@ -90,12 +90,44 @@ def fetch_zhihu_hot():
     
     return items
 
-def main():
+def fetch_hackernews():
+    """HackerNews 头版热门"""
+    items = []
+    try:
+        r = subprocess.run(['timeout','8','curl','-sL','https://hacker-news.firebaseio.com/v0/topstories.json','--connect-timeout','5','--max-time','8','-o','-','-w',''], capture_output=True, timeout=10, text=True)
+        top_ids = json.loads(r.stdout or '[]')[:25]
+    except: return items
+    
+    for sid in top_ids:
+        try:
+            r = subprocess.run(['timeout','6','curl','-sL',f'https://hacker-news.firebaseio.com/v0/item/{sid}.json','--connect-timeout','4','--max-time','6','-o','-','-w',''], capture_output=True, timeout=8, text=True)
+            s = json.loads(r.stdout or '{}')
+        except: continue
+        if not s or s.get('type') != 'story': continue
+        t = s.get('title','')
+        u = s.get('url','') or f'https://news.ycombinator.com/item?id={sid}'
+        score = s.get('score',0)
+        comments = s.get('descendants',0)
+        if score < 80: continue
+        domain = ''
+        try:
+            from urllib.parse import urlparse
+            domain = urlparse(u).netloc.replace('www.','')[:30]
+        except: pass
+        items.append({'t': t[:60], 'u': u, 'src': 'HN', 'cat': 'topic', '_score': score, '_comments': comments, '_domain': domain})
+        if len(items) >= 10: break
+    return items
+
+- def main():
     data = {}
     
     print('  GitHub Trending...')
     data['trending'] = fetch_github_trending()
     print(f'    -> {len(data["trending"])} repos')
+    
+    print('  HN头版...')
+    data['hackernews'] = fetch_hackernews()
+    print(f'    -> {len(data["hackernews"])} stories')
     
     print('  知乎热榜...')
     data['zhihu'] = fetch_zhihu_hot()
