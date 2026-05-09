@@ -1,0 +1,155 @@
+name: Daily News Update (Optimized)
+
+on:
+  schedule:
+    - cron: '0 6,8,10,12,14,16,18,20,22,0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+# ========== 共享默认值 ==========
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONUNBUFFERED: 1
+  NODE_VERSION: 24
+
+jobs:
+  # ========== Job 1: 采集（并行）==========
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    outputs:
+      collect_status: ${{ steps.collect.outputs.status }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Python依赖缓存（如果有requirements.txt）
+      - name: Cache Python dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('.github/scripts/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 7个采集器并行运行（用后台进程 + wait）
+      # 比串行省 ≈3-5分钟
+      - name: Run all collectors
+        id: collect
+        run: |
+          # 启动每个采集器后台运行，记录退出码
+          declare -A results
+
+          (timeout 150 python3 .github/scripts/fetch_news.py; echo "NEWS:$?") &
+          pid1=$!
+
+          (timeout 120 python3 .github/scripts/fetch_rss.py; echo "RSS:$?") &
+          pid2=$!
+
+          (timeout 90 python3 .github/scripts/fetch_more.py; echo "MORE:$?") &
+          pid3=$!
+
+          (timeout 60 python3 .github/scripts/fetch_shop.py; echo "SHOP:$?") &
+          pid4=$!
+
+          (timeout 30 python3 .github/scripts/fetch_metal_vol.py; echo "MV:$?") &
+          pid5=$!
+
+          (timeout 15 python3 .github/scripts/fetch_market_summary.py; echo "MKT:$?") &
+          pid6=$!
+
+          (timeout 20 python3 .github/scripts/fetch_crypto.py; echo "CRYPTO:$?") &
+          pid7=$!
+
+          (python3 .github/scripts/fetch_quant.py; echo "QUANT:$?") &
+          pid8=$!
+
+          (python3 .github/scripts/fetch_trending.py; echo "TREND:$?") &
+          pid9=$!
+
+          # 等待所有完成
+          for pid in $pid1 $pid2 $pid3 $pid4 $pid5 $pid6 $pid7 $pid8 $pid9; do
+            wait $pid
+          done
+
+          # 收集结果
+          echo "=== Collector Results ==="
+          grep -E "^(NEWS|RSS|MORE|SHOP|MV|MKT|CRYPTO|QUANT|TREND):" /proc/self/fd/0 2>/dev/null || true
+
+  # ========== Job 2: 处理（依赖采集完成）==========
+  process:
+    needs: collect
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Merge & enhance
+        run: |
+          python3 .github/scripts/merge_news.py
+          timeout 30 python3 .github/scripts/enhance_news.py 2>&1 || echo 'ENHANCE_FAILED'
+          timeout 10 python3 .github/scripts/track_quant.py || echo 'TRACK_FAILED'
+
+      # 缓存处理结果加速后续
+      - name: Upload processed data
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-data
+          path: |
+            data/
+            _merged.json
+            _all_articles.json
+          retention-days: 1
+
+  # ========== Job 3: 构建+部署（依赖处理完成）==========
+  build:
+    needs: process
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # 拉取处理结果
+      - name: Download processed data
+        uses: actions/download-artifact@v4
+        with:
+          name: processed-data
+
+      - name: Generate site
+        run: |
+          mkdir -p _site
+          python3 .github/scripts/generate_site.py 2>&1
+          touch _site/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  # ========== Job 4: 部署到Pages（依赖构建完成）==========
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
