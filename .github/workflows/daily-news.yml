@@ -1,0 +1,42 @@
+name: daily-news
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4 lxml feedparser
+      - name: Fetch news
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          cd .github/scripts
+          python fetch_news.py
+          python fetch_shop.py
+          python fetch_metal_vol.py
+          python fetch_more.py
+          python fetch_trending.py
+          python fetch_crypto.py
+          python fetch_rss.py
+          python fetch_market_summary.py
+          python merge_news.py
+          python enhance_news.py
+          python track_quant.py
+          python generate_site.py
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GH_TOKEN }}
+          publish_dir: ./
+          publish_branch: gh-pages
+          force_orphan: true
