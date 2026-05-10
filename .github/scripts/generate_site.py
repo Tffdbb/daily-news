@@ -390,22 +390,22 @@ body += '<div class="top"><span class="tl">📊 每日价值资讯</span><span c
 body += '<div class="sub"><span>'+dc+'</span><span class="gr">'+period_desc+'</span><span>'+str(total)+'条 · '+str(len(srcs))+'源</span></div>'
 body += wh + '<nav>'+nav+'</nav></header>'
 
-# ===== 今日必看（按_score排序，前5条）=====
-picks = sorted(all_news, key=lambda x: x.get('_score',0), reverse=True)[:5]
-# 过滤高分新闻（>=70分或有多源特征）
+# ===== 今日精选（按_vscore排序，Top10带摘要）=====
+picks_data = data.get('picks', [])
 pick_html = ''
-if picks and picks[0].get('_score',0) >= 60:
+if picks_data:
     pick_items = ''
-    for i, n in enumerate(picks):
-        nt = escape(n.get('t','')[:42])
-        ns = escape(n.get('src',''))
-        # 多源检测（标题前10字匹配其他源）
-        t10 = n.get('t','')[:10]
-        multi = sum(1 for x in all_news if t10 in x.get('t','') and x.get('src') != ns)
-        badge = ' 🔥多源' if multi >= 2 else ''
-        pick_items += '<div class="nc" onclick="parent.scrollIntoView()" style="border-left:2px solid #f59e0b;padding-left:6px"><span class="ni" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">'+str(i+1)+'</span><span class="nn" style="font-size:12px">'+nt+badge+'</span><span class="ns">'+ns+'</span></div>'
-    pick_html = '<div class="se" style="background:rgba(245,158,11,0.02);border-color:rgba(245,158,11,0.08)"><div class="sh"><span class="st">🔥 今日必看</span><span class="sc">AI精选</span></div>'+pick_items+'</div>'
-
+    for i, p in enumerate(picks_data):
+        pt = escape(p.get('title','')[:42])
+        ps = escape(p.get('summary','')[:36])
+        psrc = escape(p.get('src',''))
+        pc = p.get('cat','hot')
+        pcol = cat_colors.get(pc,'#f59e0b')
+        pick_items += '<div class="pc"><div class="pc-top"><span class="pc-ni" style="background:'+pcol+'">'+str(i+1)+'</span><span class="pc-tt">'+pt+'</span><span class="pc-src">'+psrc+'</span></div>'
+        if ps:
+            pick_items += '<div class="pc-sum">'+ps+'</div>'
+        pick_items += '</div>'
+    pick_html = '<div class="se" id="gpicks"><div class="sh"><span class="st">\u2b50 今日精选</span><span class="sc">'+str(len(picks_data))+'条</span></div>'+pick_items+'</div>'
 body += pick_html
 
 # 平台流量排名行
