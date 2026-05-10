@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """GitHub Trending 每日热榜 + 知乎热榜"""
-import json, subprocess, re, urllib.request, ssl
+import json, os, subprocess, re, urllib.request, ssl
 
 _CTX = ssl.create_default_context()
 _CTX.check_hostname = False; _CTX.verify_mode = ssl.CERT_NONE
@@ -18,7 +18,12 @@ def fallback(url):
         return r.read().decode('utf-8','replace')
     except: return ''
 
-def get(url):
+def get(url, use_token=False):
+    if use_token and 'GITHUB_TOKEN' in os.environ:
+        try:
+            r = urllib.request.urlopen(urllib.request.Request(url, headers={'User-Agent':'Mozilla/5.0', 'Authorization':'token '+os.environ['GITHUB_TOKEN'], 'Accept':'application/vnd.github.v3+json'}), timeout=10, context=_CTX)
+            return r.read().decode('utf-8','replace')
+        except: pass
     h = curl(url)
     return h if len(h) >= 100 else (fallback(url) or h)
 
@@ -27,7 +32,7 @@ def fetch_github_trending():
     items = []
     # 先试试官方API
     gh_url = 'https://api.github.com/search/repositories?q=created:>=%s&sort=stars&order=desc&per_page=15' % __import__('datetime').datetime.now(__import__('datetime').timezone.utc).strftime('%Y-%m-%d')
-    h = get(gh_url)
+    h = get(gh_url, use_token=True)
     j = None
     try: j = json.loads(h)
     except: pass
