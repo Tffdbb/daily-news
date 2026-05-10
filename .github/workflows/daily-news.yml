@@ -1,42 +1,79 @@
-name: daily-news
+name: Daily News Update
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 0,2,4,6,8,10,12,14,16,18,20,22 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONUNBUFFERED: 1
+
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+
       - name: Install dependencies
         run: |
           pip install requests beautifulsoup4 lxml feedparser
-      - name: Fetch news
+
+      - name: Run all collectors
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           cd .github/scripts
-          python fetch_news.py
-          python fetch_shop.py
-          python fetch_metal_vol.py
-          python fetch_more.py
-          python fetch_trending.py
-          python fetch_crypto.py
-          python fetch_rss.py
-          python fetch_market_summary.py
-          python merge_news.py
-          python enhance_news.py
-          python track_quant.py
-          python generate_site.py
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+          timeout 150 python3 fetch_news.py || true
+          timeout 90 python3 fetch_more.py || true
+          timeout 120 python3 fetch_rss.py || true
+          timeout 60 python3 fetch_shop.py || true
+          timeout 30 python3 fetch_metal_vol.py || true
+          timeout 15 python3 fetch_market_summary.py || true
+          timeout 20 python3 fetch_crypto.py || true
+          python3 fetch_quant.py || true
+          python3 fetch_trending.py || true
+
+      - name: Merge & enhance
+        run: |
+          cd .github/scripts
+          python3 merge_news.py
+          timeout 30 python3 enhance_news.py 2>&1 || echo 'ENHANCE_FAILED'
+          timeout 10 python3 track_quant.py || echo 'TRACK_FAILED'
+
+      - name: Build site
+        run: |
+          cd .github/scripts
+          python3 generate_site.py
+          mkdir -p $GITHUB_WORKSPACE/_site
+          cp -r _site/* $GITHUB_WORKSPACE/_site/
+
+      - name: Add .nojekyll
+        run: touch _site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GH_TOKEN }}
-          publish_dir: ./
-          publish_branch: gh-pages
-          force_orphan: true
+          path: '_site'
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
