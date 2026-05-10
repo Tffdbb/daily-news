@@ -270,7 +270,11 @@ for c in order:
         uu = item.get('u','#')
         mcnt = multi_map.get(id(item), 0)
         badge = ' 🔥' if mcnt >= 2 else ('' if mcnt < 1 else ' 🔗')
-        inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:'+bg+'">'+str(i+1)+'</span><span class="nn">'+nn+badge+'</span><span class="ns">'+s+'</span></div>'
+        inner += '<div class="nc" onclick="window.open(\''+uu+'\',\'_blank\',\'noopener,noreferrer\')"><span class="ni" style="background:'+bg+'">'+str(i+1)+'</span><span class="nn">'+nn+badge+'</span><span class="ns">'+s+'</span>'
+        sm = item.get('_summary','')
+        if sm:
+            inner += '<div class="nsm">'+escape(sm[:35])+'</div>'
+        inner += '</div>'
     news_html += '<div class="se" id="g'+c+'"><div class="sh"><span class="st">'+cat_names[c]+'</span><span class="sc">'+str(len(items))+'条</span></div>'+inner+'</div>'
 
 # 热词
@@ -501,6 +505,14 @@ nav a:hover{background:rgba(59,130,246,0.06);color:#60a5fa}
 footer{padding:8px 0;text-align:center;font-size:8px;color:#2a3045}
 #bt{position:fixed;bottom:50px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.1);color:#818cf8;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:50;opacity:0;transition:opacity .3s}
 @media(max-width:480px){.sg,.fg{grid-template-columns:1fr}.tl{font-size:16px}}
+.pc{border-left:3px solid #f59e0b;padding-left:8px;margin:6px 0;transition:background .2s;cursor:pointer}
+.pc:hover{background:rgba(245,158,11,0.08)}
+.pc-top{display:flex;align-items:center;gap:6px}
+.pc-ni{display:inline-flex;width:22px;height:22px;align-items:center;justify-content:center;border-radius:50%;color:#fff;font-size:12px;font-weight:700;flex-shrink:0}
+.pc-tt{flex:1;font-size:14px;color:#222;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-src{font-size:11px;color:#999;flex-shrink:0}
+.pc-sum{font-size:12px;color:#888;margin:2px 0 0 28px;line-height:1.4}
+.nsm{font-size:11px;color:#999;margin:1px 0 0 32px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 '''
 
 html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">\n<meta http-equiv=Content-Security-Policy content=\"default-src &#39;self&#39;; style-src &#39;unsafe-inline&#39; &#39;self&#39;; script-src &#39;unsafe-inline&#39; &#39;self&#39;; img-src &#39;self&#39; data: https:; connect-src &#39;self&#39;; frame-src &#39;none&#39;; object-src &#39;none&#39;\">\n<title>📊 每日价值资讯</title>\n<style>\n'+css+'</style>\n</head>\n<body>\n<div class="app">\n'+body+'\n</div>\n'+script+'\n</body>\n</html>'
