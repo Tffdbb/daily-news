@@ -5,9 +5,9 @@
 1. 规则摘要：从标题提取关键实体+动作，生成一句话摘要
 2. 价值评分：综合评分（来源权威度+标题信息量+关键词权重）
 3. Top10精选：推荐当天最有价值的新闻
-（注：DeepSeek API 摘要作为选项B，由外部脚本调用）
+（已集成 DeepSeek API 摘要，不可用时 fallback 到规则摘要）
 """
-import json, re, os, datetime
+import json, re, os, datetime, requests, urllib.parse
 
 # ── 来源权威度 ──
 SOURCE_AUTHORITY = {
@@ -71,6 +71,103 @@ def rule_summary(item):
     
     # 回退：取标题前25字
     return t[:25] + ('...' if len(t) > 25 else '')
+
+
+# ── DeepSeek API 摘要（仅对高分新闻调用，节省配额）──
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
+
+def ds_summary(item):
+    """用 DeepSeek API 生成一句话摘要，失败时返回规则摘要"""
+    if not DEEPSEEK_API_KEY:
+        return rule_summary(item)
+    
+    t = item.get('t', '')[:60]
+    src = item.get('src', '')
+    cat = item.get('cat', '')
+    
+    prompt = f'用一句话（≤30字）概括这条新闻：{t} 来源：{src}'
+    
+    try:
+        r = requests.post(DEEPSEEK_URL, json={
+            'model': 'deepseek-chat',
+            'messages': [
+                {'role': 'system', 'content': '你是新闻摘要助手。用一句简洁的话概括新闻，不超过30字。只输出摘要，不加前缀后缀。'},
+                {'role': 'user', 'content': prompt}
+            ],
+            'max_tokens': 80,
+            'temperature': 0.1,
+            'stream': False
+        }, headers={'Authorization': f'Bearer {DEEPSEEK_API_KEY}', 'Content-Type': 'application/json'}, timeout=10)
+        
+        if r.status_code == 200:
+            data = r.json()
+            summary = data['choices'][0]['message']['content'].strip().strip('"').strip("'")
+            # 截断到35字
+            if len(summary) > 35:
+                summary = summary[:32] + '...'
+            return summary
+    except Exception as e:
+        pass  # fallback 到规则摘要
+    
+    return rule_summary(item)
+
+
+def batch_ds_summary(items_fallback, chunk_size=30):
+    """批量调用 DeepSeek API，含退避"""
+    if not DEEPSEEK_API_KEY:
+        return [(i, rule_summary(i)) for i, _ in items_fallback]
+    
+    # 筛选需要API摘要的高分新闻（top 40%）
+    scored = [(i, value_score(i)) for i, _ in items_fallback]
+    scored.sort(key=lambda x: x[1], reverse=True)
+    threshold = scored[len(scored)//5*2][1] if len(scored) > 5 else 0  # 前40%分界线
+    api_items = [(i, s) for i, s in scored if s >= threshold and s >= 55][:20]  # 最多20条
+    rule_items = [(i, s) for i, s in scored if i not in [x[0] for x in api_items]]
+    
+    results = {id(i): rule_summary(i) for i, _ in rule_items}
+    
+    # 分批调用API
+    for batch_start in range(0, len(api_items), max(1, chunk_size // 5)):
+        batch = api_items[batch_start:batch_start+5]
+        texts = [i.get('t','')[:50] for i, _ in batch]
+        
+        if not texts:
+            continue
+        
+        prompt_lines = '\n'.join([f'{j+1}. {t}' for j, t in enumerate(texts)])
+        prompt = f'为以下新闻各生成一句摘要（≤20字），逐行对应输出：\n{prompt_lines}'
+        
+        try:
+            r = requests.post(DEEPSEEK_URL, json={
+                'model': 'deepseek-chat',
+                'messages': [
+                    {'role': 'system', 'content': '逐行输出摘要，每行对应一条新闻。只输出摘要文本，不加编号和前缀。'},
+                    {'role': 'user', 'content': prompt}
+                ],
+                'max_tokens': 200,
+                'temperature': 0.1,
+                'stream': False
+            }, headers={'Authorization': f'Bearer {DEEPSEEK_API_KEY}', 'Content-Type': 'application/json'}, timeout=15)
+            
+            if r.status_code == 200:
+                result = r.json()
+                summaries = result['choices'][0]['message']['content'].strip().split('\n')
+                for j, (i, _) in enumerate(batch):
+                    if j < len(summaries):
+                        s = summaries[j].strip().strip('"').strip("'")
+                        if len(s) > 35:
+                            s = s[:32] + '...'
+                        results[id(i)] = s
+        except Exception as e:
+            pass
+        
+        # 对未命中API的用规则摘要兜底
+        for i, _ in batch:
+            if id(i) not in results:
+                results[id(i)] = rule_summary(i)
+    
+    return [(i, results.get(id(i), rule_summary(i))) for i, _ in items_fallback]
 
 
 # ── 价值评分 ──
@@ -153,11 +250,23 @@ def main():
     
     # 增强所有新闻
     news = raw.get('news', [])
-    for item in news:
-        if not item.get('t'):
-            continue
-        item['_summary'] = rule_summary(item)
+    items_with_sum = [(item, None) for item in news if item.get('t')]
+    
+    # 先算所有评分
+    for item, _ in items_with_sum:
         item['_vscore'] = value_score(item)
+    
+    # 批量生成摘要（高分用API，低分用规则）
+    if DEEPSEEK_API_KEY:
+        print('DeepSeek API 可用，生成AI摘要...')
+        results = batch_ds_summary(items_with_sum)
+        for item, summary in results:
+            item['_summary'] = summary
+        print(f'AI摘要完成：{sum(1 for _,s in results if len(s)>5)}条')
+    else:
+        print('DeepSeek API 不可用，使用规则摘要')
+        for item, _ in items_with_sum:
+            item['_summary'] = rule_summary(item)
     
     # 增强分组新闻
     groups = raw.get('groups', {})
@@ -165,7 +274,7 @@ def main():
         for item in groups[cat]:
             if not item.get('t'):
                 continue
-            item['_summary'] = rule_summary(item)
+            item['_summary'] = rule_summary(item)  # 分组新闻用规则摘要（节省配额）
             item['_vscore'] = value_score(item)
     
     # 计算Top10精选
