@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """每日价值资讯 - 头条引擎V3：事件共振+源多样性+精炼展示"""
 import json, os, datetime, re, sys
@@ -437,6 +437,11 @@ if len(src_parts) > 5:
 else:
     src_html = '<span>'+src_html+'</span>'
 body += '<div class="se"><div class="sh"><span class="st">📡 来源</span><span class="sc">'+str(len(srcs))+'个</span></div><div class="srcs">'+src_html+'</div></div>'
+body += '<div class="se" style="text-align:center;padding:16px;border:1px dashed rgba(99,102,241,0.15)">'
+body += '<div style="font-size:11px;color:#8896a6;margin-bottom:8px">☕ 如果觉得有用，请我喝杯咖啡</div>'
+body += '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">'
+body += '<div><div style="font-size:10px;color:#5a6a7d;margin-bottom:4px">微信赞赏</div><div style="width:120px;height:120px;background:rgba(34,197,94,0.04);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#5a6a7d">(请替换为赞赏码图片)</div></div>'
+body += '</div></div>'
 body += '<footer>📊 每2小时更新 · 工作 · 投资 · 学习 · 生活</footer>'
 body += '<div id="bt" onclick="window.scrollTo({top:0,behavior:\'smooth\'})">↑</div>'
 
