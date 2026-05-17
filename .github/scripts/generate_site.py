@@ -526,4 +526,27 @@ os.makedirs('_site', exist_ok=True)
 with open('_site/index.html', 'w', encoding='utf-8') as f:
     f.write(html)
 
+# Generate service landing page (data collection service)
+_svc = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+_d = f'{_svc.month}月{_svc.day}日'
+_svc_html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>数据采集定制服务</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#f5f5f7;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}.hero{background:linear-gradient(135deg,#1a1a2e,#16213e 50%,#0f3460);color:#fff;padding:60px 20px 40px;text-align:center}.hero h1{font-size:28px;font-weight:700}.hero p{font-size:15px;opacity:.8;margin-top:12px}.tagline{display:inline-block;background:rgba(255,255,255,.12);padding:6px 16px;border-radius:20px;font-size:13px;margin-top:16px}.container{max-width:860px;margin:-20px auto 40px;padding:0 16px}.card{background:#fff;border-radius:14px;padding:24px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.06)}.card h3{font-size:16px;font-weight:600;margin-bottom:12px}.card p,.card li{font-size:14px;color:#515154;line-height:1.7}.price-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.price-item{background:#f8f8fa;border-radius:10px;padding:14px}.price-range{font-size:20px;font-weight:700;color:#0f3460}.price-desc{font-size:12px;color:#86868b;margin-top:4px}.case{border-left:3px solid #0f3460;padding-left:14px;margin:10px 0}.case-title{font-weight:600}.case-detail{font-size:13px;color:#636366;margin-top:4px}.tag{display:inline-block;background:rgba(15,52,96,.08);color:#0f3460;padding:3px 10px;border-radius:12px;font-size:11px;margin:3px}.footer{text-align:center;padding:30px 20px;font-size:11px;color:#86868b}@media(max-width:480px){.price-grid{grid-template-columns:1fr}}</style></head>
+<body>
+<div class="hero"><h1>🕷️ 数据采集 &middot; 定制服务</h1><p>你要数据，我负责搞定。<br>一个需求 &rarr; 自动化采集 &rarr; 整洁交付</p><div class="tagline">已稳定运行 2000+ 次自动化采集任务</div></div>
+<div class="container">
+<div class="card"><h3>💰 报价参考</h3><div class="price-grid"><div class="price-item"><div class="price-range">200-500元</div><div class="price-desc">简单采集：单网站、固定字段</div></div><div class="price-item"><div class="price-range">500-1500元</div><div class="price-desc">中等难度：需登录/翻页/反爬</div></div><div class="price-item"><div class="price-range">1500-4000元</div><div class="price-desc">复杂采集：JS渲染/多源整合</div></div><div class="price-item"><div class="price-range">月费100-500元</div><div class="price-desc">长期监控：日报/周报/异动推送</div></div></div></div>
+<div class="card"><h3>🔧 能做什么</h3><p><span class="tag">电商数据</span><span class="tag">自媒体数据</span><span class="tag">金融数据</span><span class="tag">企业信息</span><span class="tag">内容聚合</span><span class="tag">网页监控</span><span class="tag">AI摘要</span><span class="tag">定时推送</span></p><p style="margin-top:12px">京东、淘宝、什么值得买、知乎、小红书、东方财富……直接甩需求</p></div>
+<div class="card"><h3>📋 实战案例</h3><div class="case"><div class="case-title">案例1：批量三维家贴图填写</div><div class="case-detail">520条贴图数据，手动半天 &rarr; CDP自动化42分钟，100%准确</div></div>
+<div class="case"><div class="case-title">案例2：每日价值资讯站</div><div class="case-detail">13来源、10栏目、AI摘要、每2小时自动更新</div></div>
+<div class="case"><div class="case-title">案例3：A股选股工具链</div><div class="case-detail">盘前&rarr;盘中&rarr;收盘+微信推送，日处理千只股票</div></div>
+<div class="case"><div class="case-title">案例4：商品信息采集</div><div class="case-detail">关键词&rarr;标题/价格/链接&rarr;美观HTML报告</div></div></div></div>
+<div class="footer">数据采集定制服务 &middot; ''' + _d + '''</div>
+</body></html>'''
+with open('_site/service.html', 'w', encoding='utf-8') as _f:
+    _f.write(_svc_html)
+print('SERVICE_PAGE: generated')
+
+
 print('DONE: %d news, %d sources, %d bytes' % (total, len(srcs), len(html)))
