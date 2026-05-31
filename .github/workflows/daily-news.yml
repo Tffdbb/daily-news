@@ -62,6 +62,7 @@ jobs:
         run: python3 .github/scripts/fetch_trending.py || echo 'TRENDING_FAILED'
 
       - name: Crypto price (Go collector)
+        continue-on-error: true
         working-directory: .github/scripts/crypto_collector
         run: timeout 30 go run . ../../../data/ || echo 'CRYPTO_FAILED'
 
@@ -99,7 +100,7 @@ jobs:
           server_port: 465
           username: 876645923@qq.com
           password: ${{ secrets.MAIL_PASS }}
-          subject: 📰 每日价值资讯日报 ${{ github.event.repository.updated_at }}
+          subject: 📰 每日价值资讯日报
           to: 1246591526@qq.com
           from: 小石新闻站 <876645923@qq.com>
           body: |
