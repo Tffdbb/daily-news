@@ -2,7 +2,10 @@ name: Daily News Update
 
 on:
   schedule:
-    - cron: '0 0,2,4,6,8,10,12,14,16,18,20,22 * * *'
+    # 工作日(1-5): 6次/天（6/10/14/18/22/0）
+    # 周末(6,0): 4次/天（6/12/18/0）
+    - cron: '0 6,10,14,18,22,0 * * 1-5'
+    - cron: '0 6,12,18,0 * * 0,6'
   workflow_dispatch:
 
 permissions:
@@ -14,66 +17,102 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
-defaults:
-  run:
-    shell: bash
-
-env:
-  PYTHONUNBUFFERED: 1
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: '3.10'
+          node-version: '24'
 
-      - name: Install dependencies
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Tests
+        run: timeout 20 python3 -m pytest .github/scripts/test_fetch_news.py -v || echo 'TESTS_FAILED'
+
+      - name: Python collector
+        run: timeout 150 python3 .github/scripts/fetch_news.py || echo 'COLLECT_FAILED'
+
+      - name: RSS collector
+        run: timeout 120 python3 .github/scripts/fetch_rss.py || echo 'RSS_FAILED'
+
+      - name: Vertical collector
+        run: timeout 90 python3 .github/scripts/fetch_more.py || echo 'MORE_FAILED'
+
+      - name: Shop collector
+        run: timeout 60 python3 .github/scripts/fetch_shop.py || echo 'SHOP_FAILED'
+
+      - name: Metal & Volume
+        run: timeout 30 python3 .github/scripts/fetch_metal_vol.py || echo 'MV_FAILED'
+
+      - name: Market Summary
+        run: timeout 15 python3 .github/scripts/fetch_market_summary.py || echo 'MKT_FAILED'
+
+      - name: Quant picker
+        run: python3 .github/scripts/fetch_quant.py || echo 'QUANT_FAILED'
+
+      - name: Trending + Zhihu
+        run: python3 .github/scripts/fetch_trending.py || echo 'TRENDING_FAILED'
+
+      - name: Crypto price (Go collector)
+        working-directory: .github/scripts/crypto_collector
+        run: timeout 30 go run . ../../../data/ || echo 'CRYPTO_FAILED'
+
+      - name: Quant track
+        run: timeout 10 python3 .github/scripts/track_quant.py || echo 'TRACK_FAILED'
+
+      - name: Merge
+        run: python3 .github/scripts/merge_news.py
+
+      - name: Content enhance
+        run: timeout 30 python3 .github/scripts/enhance_news.py 2>&1 || echo 'ENHANCE_FAILED'
+
+      - name: Build page
+        shell: bash
         run: |
-          pip install requests beautifulsoup4 lxml feedparser
+          mkdir -p _site
+          python3 .github/scripts/generate_site.py 2>&1
 
-      - name: Run all collectors
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: |
-          cd .github/scripts
-          timeout 150 python3 fetch_news.py || true
-          timeout 90 python3 fetch_more.py || true
-          timeout 120 python3 fetch_rss.py || true
-          timeout 60 python3 fetch_shop.py || true
-          timeout 30 python3 fetch_metal_vol.py || true
-          timeout 15 python3 fetch_market_summary.py || true
-          timeout 20 python3 fetch_crypto.py || true
-          python3 fetch_quant.py || true
-          python3 fetch_trending.py || true
-
-      - name: Merge & enhance
-        run: |
-          cd .github/scripts
-          python3 merge_news.py
-          timeout 30 python3 enhance_news.py 2>&1 || echo 'ENHANCE_FAILED'
-          timeout 10 python3 track_quant.py || echo 'TRACK_FAILED'
-
-      - name: Build site
-        run: |
-          cd .github/scripts
-          python3 generate_site.py
-          mkdir -p $GITHUB_WORKSPACE/_site
-          cp -r _site/* $GITHUB_WORKSPACE/_site/
-
-      - name: Add .nojekyll
+      - name: .nojekyll
         run: touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '_site'
 
-      - name: Deploy
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+      - name: Send daily digest email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.qq.com
+          server_port: 465
+          username: 876645923@qq.com
+          password: ${{ secrets.MAIL_PASS }}
+          subject: 📰 每日价值资讯日报 ${{ github.event.repository.updated_at }}
+          to: 1246591526@qq.com
+          from: 小石新闻站 <876645923@qq.com>
+          body: |
+            您好！这是来自小石新闻站的每日价值资讯推送。
+
+            📊 站点统计
+            - 采集来源：14个
+            - 更新频次：工作日6次/天，周末4次/天
+            - 栏目涵盖：全球市场 / 投资财经 / 宏观政策 / 热点民生 / 科技前沿 / 机会风向 / GitHub趋势 / A股量化
+
+            🌐 立即查看完整资讯：https://tffdbb.github.io/daily-news/
+
+            ---
+            本邮件由 GitHub Actions 自动发送，无需回复。
+          convert_markdown: true
+          priority: normal
