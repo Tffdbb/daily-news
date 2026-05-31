@@ -62,7 +62,6 @@ jobs:
         run: python3 .github/scripts/fetch_trending.py || echo 'TRENDING_FAILED'
 
       - name: Crypto price (Go collector)
-        continue-on-error: true
         working-directory: .github/scripts/crypto_collector
         run: timeout 30 go run . ../../../data/ || echo 'CRYPTO_FAILED'
 
@@ -74,6 +73,9 @@ jobs:
 
       - name: Content enhance
         run: timeout 30 python3 .github/scripts/enhance_news.py 2>&1 || echo 'ENHANCE_FAILED'
+
+      - name: Dedup & denoise
+        run: timeout 15 python3 .github/scripts/dedup_news.py 2>&1 || echo 'DEDUP_FAILED'
 
       - name: Build page
         shell: bash
@@ -100,9 +102,10 @@ jobs:
           server_port: 465
           username: 876645923@qq.com
           password: ${{ secrets.MAIL_PASS }}
-          subject: 📰 每日价值资讯日报
+          subject: 📰 每日价值资讯日报 ${{ github.event.repository.updated_at }}
           to: 1246591526@qq.com
           from: 小石新闻站 <876645923@qq.com>
+          # 从站点抓取内容做摘要
           body: |
             您好！这是来自小石新闻站的每日价值资讯推送。
 

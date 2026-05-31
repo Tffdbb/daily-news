@@ -1,0 +1,177 @@
+{
+  "collectedAt": "2026-05-22T07:13:41Z",
+  "tickers": [
+    {
+      "symbol": "BTC",
+      "price": 77281.5072973,
+      "change": -0.3694097304094908,
+      "high": 0,
+      "low": 0,
+      "volume": 248181385.70405278,
+      "source": "prism"
+    },
+    {
+      "symbol": "ETH",
+      "price": 2124.37594595,
+      "change": -0.16954087766757436,
+      "high": 0,
+      "low": 0,
+      "volume": 209391385.53098127,
+      "source": "prism"
+    },
+    {
+      "symbol": "SOL",
+      "price": 86.65891892,
+      "change": 0.39370078740157877,
+      "high": 0,
+      "low": 0,
+      "volume": 27416857.273157474,
+      "source": "prism"
+    },
+    {
+      "symbol": "XRP",
+      "price": 1.36137838,
+      "change": -0.598365440747226,
+      "high": 0,
+      "low": 0,
+      "volume": 43035560.09458656,
+      "source": "prism"
+    },
+    {
+      "symbol": "DOGE",
+      "price": 0.10517838,
+      "change": 0.1999428734647261,
+      "high": 0,
+      "low": 0,
+      "volume": 96593132.15508758,
+      "source": "prism"
+    },
+    {
+      "symbol": "ADA",
+      "price": 0.25004595,
+      "change": 0.8058017727638896,
+      "high": 0,
+      "low": 0,
+      "volume": 23124589.333288454,
+      "source": "prism"
+    },
+    {
+      "symbol": "DOT",
+      "price": 1.31097297,
+      "change": 3.4700315457413278,
+      "high": 0,
+      "low": 0,
+      "volume": 1810762.030014741,
+      "source": "prism"
+    },
+    {
+      "symbol": "AVAX",
+      "price": 9.48486486,
+      "change": 0.9681881051175774,
+      "high": 0,
+      "low": 0,
+      "volume": 1165247.259748329,
+      "source": "prism"
+    },
+    {
+      "symbol": "LINK",
+      "price": 9.77737838,
+      "change": 1.3993987768218077,
+      "high": 0,
+      "low": 0,
+      "volume": 3025038.327905737,
+      "source": "prism"
+    },
+    {
+      "symbol": "POL",
+      "price": 0.09215351,
+      "change": 0.8751777704846243,
+      "high": 0,
+      "low": 0,
+      "volume": 2141787.9493801002,
+      "source": "prism"
+    },
+    {
+      "symbol": "AAVE",
+      "price": 87.81351351,
+      "change": -1.0584393649363784,
+      "high": 0,
+      "low": 0,
+      "volume": 531738.464632455,
+      "source": "prism"
+    },
+    {
+      "symbol": "UNI",
+      "price": 3.60894595,
+      "change": -0.6055601431323919,
+      "high": 0,
+      "low": 0,
+      "volume": 1738388.802218094,
+      "source": "prism"
+    },
+    {
+      "symbol": "ARB",
+      "price": 0.11345351,
+      "change": 2.252049364922081,
+      "high": 0,
+      "low": 0,
+      "volume": 3382325.349783803,
+      "source": "prism"
+    },
+    {
+      "symbol": "OP",
+      "price": 0.13304865,
+      "change": 2.859350850077287,
+      "high": 0,
+      "low": 0,
+      "volume": 1309333.42042492,
+      "source": "prism"
+    },
+    {
+      "symbol": "ATOM",
+      "price": 2.14697297,
+      "change": 3.4682080924855523,
+      "high": 0,
+      "low": 0,
+      "volume": 565010.2543050705,
+      "source": "prism"
+    },
+    {
+      "symbol": "NEAR",
+      "price": 2.20197297,
+      "change": 28.83040935672514,
+      "high": 0,
+      "low": 0,
+      "volume": 15877210.084302273,
+      "source": "prism"
+    }
+  ],
+  "report": {
+    "success": 1,
+    "fail": 5,
+    "unknown": 0,
+    "errors": [
+      {
+        "source": "binance_fetch",
+        "reason": "all 4 retries exhausted: Get \"https://api.binance.com/api/v3/ticker/24hr?symbols=%5B%22BTCUSDT%22,%22ETHUSDT%22,%22SOLUSDT%22,%22XRPUSDT%22,%22DOGEUSDT%22,%22ADAUSDT%22,%22DOTUSDT%22,%22AVAXUSDT%22,%22LINKUSDT%22,%22POLUSDT%22,%22AAVEUSDT%22,%22UNIUSDT%22,%22ARBUSDT%22,%22OPUSDT%22,%22ATOMUSDT%22,%22NEARUSDT%22%5D\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+      },
+      {
+        "source": "coincap_fetch",
+        "reason": "fast fail: Get \"https://api.coincap.io/v2/assets?ids=bitcoin,ethereum,solana,xrp,dogecoin,cardano,polkadot,avalanche,chainlink,polygon,aave,uniswap,arbitrum,optimism,cosmos,near\u0026limit=16\": dial tcp: lookup api.coincap.io: no such host"
+      },
+      {
+        "source": "okx_fetch",
+        "reason": "fast fail: Get \"https://www.okx.com/api/v5/market/tickers?instType=SPOT\": dial tcp: lookup www.okx.com: getaddrinfow: The requested name is valid, but no data of the requested type was found."
+      },
+      {
+        "source": "bybit_fetch",
+        "reason": "all 4 retries exhausted: Get \"https://api.bybit.com/v5/market/tickers?category=spot\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+      },
+      {
+        "source": "kucoin_fetch",
+        "reason": "all 4 retries exhausted: Get \"https://api.kucoin.com/api/v1/market/allTickers\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+      }
+    ]
+  },
+  "duration": "5m5.678s"
+}
