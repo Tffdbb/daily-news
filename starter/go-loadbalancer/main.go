@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -9,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 )
+
+type retryKey struct{}
 
 type Backend struct {
 	URL          *url.URL
@@ -60,9 +64,9 @@ func (s *ServerPool) AddBackend(backend *Backend) {
 
 func (s *ServerPool) HealthCheck() {
 	for _, b := range s.backends {
-		status := "up"
 		alive := isBackendAlive(b.URL)
 		b.SetAlive(alive)
+		status := "up"
 		if !alive {
 			status = "down"
 		}
@@ -80,16 +84,17 @@ func isBackendAlive(u *url.URL) bool {
 	return true
 }
 
+var serverPool ServerPool
+var maxRetries = 3
+
 func lb(w http.ResponseWriter, r *http.Request) {
 	peer := serverPool.GetNextPeer()
-	if peer != nil {
-		peer.ReverseProxy.ServeHTTP(w, r)
+	if peer == nil {
+		http.Error(w, "Service not available", http.StatusServiceUnavailable)
 		return
 	}
-	http.Error(w, "Service not available", http.StatusServiceUnavailable)
+	peer.ReverseProxy.ServeHTTP(w, r)
 }
-
-var serverPool ServerPool
 
 func main() {
 	serverUrls := []string{
@@ -100,19 +105,36 @@ func main() {
 
 	for _, u := range serverUrls {
 		parsedUrl, _ := url.Parse(u)
-		proxy := httputil.NewSingleHostReverseProxy(parsedUrl)
-
 		backend := &Backend{
-			URL:          parsedUrl,
-			Alive:        true,
-			ReverseProxy: proxy,
+			URL:   parsedUrl,
+			Alive: true,
 		}
+
+		proxy := httputil.NewSingleHostReverseProxy(parsedUrl)
+		proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+			log.Printf("[%s] proxy error: %s\n", backend.URL.Host, err.Error())
+			backend.SetAlive(false)
+
+			retryCount := 0
+			if v := r.Context().Value(retryKey{}); v != nil {
+				retryCount = v.(int)
+			}
+			if retryCount < maxRetries {
+				ctx := context.WithValue(r.Context(), retryKey{}, retryCount+1)
+				log.Printf("Retry %d/%d on next backend\n", retryCount+1, maxRetries)
+				lb(w, r.WithContext(ctx))
+			} else {
+				http.Error(w, "Service not available", http.StatusServiceUnavailable)
+			}
+		}
+
+		backend.ReverseProxy = proxy
 		serverPool.AddBackend(backend)
 		log.Printf("Configured server: %s\n", parsedUrl)
 	}
 
 	go func() {
-		t := time.NewTicker(time.Minute)
+		t := time.NewTicker(30 * time.Second)
 		for range t.C {
 			log.Println("Starting health check...")
 			serverPool.HealthCheck()
